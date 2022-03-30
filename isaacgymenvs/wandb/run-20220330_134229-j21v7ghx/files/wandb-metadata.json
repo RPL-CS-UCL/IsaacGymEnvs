@@ -1,0 +1,26 @@
+{
+    "os": "Linux-5.4.0-99-generic-x86_64-with-debian-buster-sid",
+    "python": "3.6.13",
+    "heartbeatAt": "2022-03-30T12:42:30.869326",
+    "startedAt": "2022-03-30T12:42:29.967146",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080",
+    "gpu_count": 2,
+    "cpu_count": 24,
+    "cuda": null,
+    "args": [
+        "task=AnymalTerrain"
+    ],
+    "state": "running",
+    "program": "train.py",
+    "codePath": "isaacgymenvs/train.py",
+    "git": {
+        "remote": "https://github.com/RPL-CS-UCL/IsaacGymEnvs.git",
+        "commit": "e86097999b88da28b5252be16f81c595bbb3fca5"
+    },
+    "email": "ms2520@ic.ac.uk",
+    "root": "/home/maria/isaacgym/python/IsaacGymEnvs",
+    "host": "maria-18",
+    "username": "maria",
+    "executable": "/home/maria/miniconda3/envs/isaac/bin/python"
+}

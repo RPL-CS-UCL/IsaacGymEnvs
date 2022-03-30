@@ -142,7 +142,8 @@ class AnymalTerrain(VecTask):
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         self.height_points = self.init_height_points()
-        self.measured_heights = None
+        self.measured_heights = 0
+
         # joint positions offsets
         self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
         for i in range(self.num_actions):
@@ -309,6 +310,7 @@ class AnymalTerrain(VecTask):
                                     heights,
                                     self.actions
                                     ),dim=-1)
+        
 
     def compute_reward(self):
         # velocity tracking reward
@@ -316,6 +318,8 @@ class AnymalTerrain(VecTask):
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         rew_lin_vel_xy = torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
         rew_ang_vel_z = torch.exp(-ang_vel_error/0.25) * self.rew_scales["ang_vel_z"]
+
+
 
         # other base velocity penalties
         rew_lin_vel_z = torch.square(self.base_lin_vel[:, 2]) * self.rew_scales["lin_vel_z"]
@@ -325,7 +329,8 @@ class AnymalTerrain(VecTask):
         rew_orient = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1) * self.rew_scales["orient"]
 
         # base height penalty
-        rew_base_height = torch.square(self.root_states[:, 2] - 0.52) * self.rew_scales["base_height"] # TODO add target base height to cfg
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1) 
+        rew_base_height=  torch.square(base_height -self.cfg["env"]["baseInitState"]["height"]) * self.rew_scales["base_height"]
 
         # torque penalty
         rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
@@ -337,9 +342,6 @@ class AnymalTerrain(VecTask):
         knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
         rew_collision = torch.sum(knee_contact, dim=1) * self.rew_scales["collision"] # sum vs any ?
 
-        # stumbling penalty
-        stumble = (torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) > 5.) * (torch.abs(self.contact_forces[:, self.feet_indices, 2]) < 1.)
-        rew_stumble = torch.sum(stumble, dim=1) * self.rew_scales["stumble"]
 
         # action rate penalty
         rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
@@ -358,7 +360,7 @@ class AnymalTerrain(VecTask):
 
         # total reward
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip + rew_stumble
+                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip 
         self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
 
         # add termination reward
@@ -373,7 +375,6 @@ class AnymalTerrain(VecTask):
         self.episode_sums["torques"] += rew_torque
         self.episode_sums["joint_acc"] += rew_joint_acc
         self.episode_sums["collision"] += rew_collision
-        self.episode_sums["stumble"] += rew_stumble
         self.episode_sums["action_rate"] += rew_action_rate
         self.episode_sums["air_time"] += rew_airTime
         self.episode_sums["base_height"] += rew_base_height
@@ -535,7 +536,6 @@ class AnymalTerrain(VecTask):
 
         return heights.view(self.num_envs, -1) * self.terrain.vertical_scale
 
-
 # terrain generator
 from isaacgym.terrain_utils import *
 class Terrain:
@@ -566,10 +566,7 @@ class Terrain:
         self.tot_rows = int(self.env_rows * self.length_per_env_pixels) + 2 * self.border
 
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
-        if cfg["curriculum"]:
-            self.curiculum(num_robots, num_terrains=self.env_cols, num_levels=self.env_rows)
-        else:
-            self.randomized_terrain()   
+        self.randomized_terrain()   
         self.heightsamples = self.height_field_raw
         self.vertices, self.triangles = convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
     
@@ -577,13 +574,13 @@ class Terrain:
         for k in range(self.num_maps):
             # Env coordinates in the world
             (i, j) = np.unravel_index(k, (self.env_rows, self.env_cols))
-
+            
             # Heightfield coordinate system from now on
             start_x = self.border + i * self.length_per_env_pixels
             end_x = self.border + (i + 1) * self.length_per_env_pixels
             start_y = self.border + j * self.width_per_env_pixels
             end_y = self.border + (j + 1) * self.width_per_env_pixels
-
+            
             terrain = SubTerrain("terrain",
                               width=self.width_per_env_pixels,
                               length=self.width_per_env_pixels,
@@ -597,7 +594,7 @@ class Terrain:
                 else:
                     pyramid_sloped_terrain(terrain, np.random.choice([-0.3, -0.2, 0, 0.2, 0.3]))
             elif choice < 0.6:
-                # step_height = np.random.choice([-0.18, -0.15, -0.1, -0.05, 0.05, 0.1, 0.15, 0.18])
+                step_height = np.random.choice([-0.18, -0.15, -0.1, -0.05, 0.05, 0.1, 0.15, 0.18])
                 step_height = np.random.choice([-0.15, 0.15])
                 pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
             elif choice < 1.:
@@ -613,7 +610,7 @@ class Terrain:
             y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
             env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
             self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-
+    '''
     def curiculum(self, num_robots, num_terrains, num_levels):
         num_robots_per_map = int(num_robots / num_terrains)
         left_over = num_robots % num_terrains
@@ -669,7 +666,7 @@ class Terrain:
                 y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
                 env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
                 self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-
+    '''
 
 @torch.jit.script
 def quat_apply_yaw(quat, vec):

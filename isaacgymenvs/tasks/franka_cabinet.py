@@ -132,7 +132,7 @@ class FrankaCabinet(VecTask):
         upper = gymapi.Vec3(spacing, spacing, spacing)
 
         asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../assets")
-        franka_asset_file = "urdf/franka_description/robots/franka_panda.urdf"
+        franka_asset_file = "urdf/unitree_a1/urdf/a1.urdf"
         cabinet_asset_file = "urdf/sektion_cabinet_model/urdf/sektion_cabinet_2.urdf"
 
         if "asset" in self.cfg["env"]:
@@ -159,8 +159,8 @@ class FrankaCabinet(VecTask):
         asset_options.armature = 0.005
         cabinet_asset = self.gym.load_asset(self.sim, asset_root, cabinet_asset_file, asset_options)
 
-        franka_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e6, 1.0e6], dtype=torch.float, device=self.device)
-        franka_dof_damping = to_torch([80, 80, 80, 80, 80, 80, 80, 1.0e2, 1.0e2], dtype=torch.float, device=self.device)
+        #franka_dof_stiffness = to_torch([400, 400, 400, 400, 400, 400, 400, 1.0e6, 1.0e6], dtype=torch.float, device=self.device)
+        #franka_dof_damping = to_torch([80, 80, 80, 80, 80, 80, 80, 1.0e2, 1.0e2], dtype=torch.float, device=self.device)
 
         self.num_franka_bodies = self.gym.get_asset_rigid_body_count(franka_asset)
         self.num_franka_dofs = self.gym.get_asset_dof_count(franka_asset)
@@ -176,6 +176,7 @@ class FrankaCabinet(VecTask):
         franka_dof_props = self.gym.get_asset_dof_properties(franka_asset)
         self.franka_dof_lower_limits = []
         self.franka_dof_upper_limits = []
+        '''
         for i in range(self.num_franka_dofs):
             franka_dof_props['driveMode'][i] = gymapi.DOF_MODE_POS
             if self.physics_engine == gymapi.SIM_PHYSX:
@@ -187,7 +188,7 @@ class FrankaCabinet(VecTask):
 
             self.franka_dof_lower_limits.append(franka_dof_props['lower'][i])
             self.franka_dof_upper_limits.append(franka_dof_props['upper'][i])
-
+        '''
         self.franka_dof_lower_limits = to_torch(self.franka_dof_lower_limits, device=self.device)
         self.franka_dof_upper_limits = to_torch(self.franka_dof_upper_limits, device=self.device)
         self.franka_dof_speed_scales = torch.ones_like(self.franka_dof_lower_limits)
@@ -291,18 +292,18 @@ class FrankaCabinet(VecTask):
             self.frankas.append(franka_actor)
             self.cabinets.append(cabinet_actor)
 
-        self.hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "panda_link7")
+        self.hand_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "FL_calf")
         self.drawer_handle = self.gym.find_actor_rigid_body_handle(env_ptr, cabinet_actor, "drawer_top")
-        self.lfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "panda_leftfinger")
-        self.rfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "panda_rightfinger")
+        self.lfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "FL_calf")
+        self.rfinger_handle = self.gym.find_actor_rigid_body_handle(env_ptr, franka_actor, "FR_calf")
         self.default_prop_states = to_torch(self.default_prop_states, device=self.device, dtype=torch.float).view(self.num_envs, self.num_props, 13)
 
         self.init_data()
 
     def init_data(self):
-        hand = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "panda_link7")
-        lfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "panda_leftfinger")
-        rfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "panda_rightfinger")
+        hand = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "FL_calf")
+        lfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "FL_calf")
+        rfinger = self.gym.find_actor_rigid_body_handle(self.envs[0], self.frankas[0], "FR_calf")
 
         hand_pose = self.gym.get_rigid_transform(self.envs[0], hand)
         lfinger_pose = self.gym.get_rigid_transform(self.envs[0], lfinger)

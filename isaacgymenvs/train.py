@@ -44,8 +44,9 @@ from utils.utils import set_np_formatting, set_seed
 from rl_games.common import env_configurations, vecenv
 from rl_games.torch_runner import Runner
 
+import torch
 import yaml
-
+import wandb
 
 ## OmegaConf & Hydra Config
 
@@ -114,3 +115,5 @@ def launch_rlg_hydra(cfg: DictConfig):
 
 if __name__ == "__main__":
     launch_rlg_hydra()
+    from torch.utils.tensorboard import SummaryWriter
+    writer = SummaryWriter()

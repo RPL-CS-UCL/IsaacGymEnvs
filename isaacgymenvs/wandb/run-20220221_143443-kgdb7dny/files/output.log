@@ -1,0 +1,288 @@
+task:
+    name: Anymal
+    physics_engine: physx
+    env:
+        numEnvs: 4096
+        envSpacing: 4.0
+        clipObservations: 5.0
+        clipActions: 1.0
+        plane:
+            staticFriction: 1.0
+            dynamicFriction: 1.0
+            restitution: 0.0
+        baseInitState:
+            pos: [0.0, 0.0, 0.62]
+            rot: [0.0, 0.0, 0.0, 1.0]
+            vLinear: [0.0, 0.0, 0.0]
+            vAngular: [0.0, 0.0, 0.0]
+        randomCommandVelocityRanges:
+            linear_x: [-2.0, 2.0]
+            linear_y: [-1.0, 1.0]
+            yaw: [-1.0, 1.0]
+        control:
+            stiffness: 85.0
+            damping: 2.0
+            actionScale: 0.5
+            controlFrequencyInv: 1
+        defaultJointAngles:
+            FR_hip_joint: -0.05
+            FR_thigh_joint: 0.7
+            FR_calf_joint: -1.5
+            FL_hip_joint: 0.05
+            FL_thigh_joint: 0.7
+            FL_calf_joint: -1.5
+            RR_hip_joint: -0.05
+            RR_thigh_joint: 0.7
+            RR_calf_joint: -1.5
+            RL_hip_joint: 0.05
+            RL_thigh_joint: 0.7
+            RL_calf_joint: -1.5
+        urdfAsset:
+            collapseFixedJoints: True
+            fixBaseLink: False
+            defaultDofDriveMode: 4
+        learn:
+            linearVelocityXYRewardScale: 1.0
+            angularVelocityZRewardScale: 0.5
+            torqueRewardScale: -2.5e-05
+            linearVelocityScale: 2.0
+            angularVelocityScale: 0.25
+            dofPositionScale: 1.0
+            dofVelocityScale: 0.05
+            episodeLength_s: 50
+        viewer:
+            refEnv: 0
+            pos: [0, 0, 4]
+            lookat: [1.0, 1, 3.3]
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/defaults_list.py:251: UserWarning: In 'config': Defaults list is missing `_self_`. See https://hydra.cc/docs/upgrades/1.0_to_1.1/default_composition_order for more information
+  warnings.warn(msg, UserWarning)
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/defaults_list.py:412: UserWarning: In config: Invalid overriding of hydra/job_logging:
+Default list overrides requires 'override' keyword.
+See https://hydra.cc/docs/next/upgrades/1.0_to_1.1/defaults_list_override for more information.
+  deprecation_warning(msg)
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/gym/spaces/box.py:74: UserWarning: [33mWARN: Box bound precision lowered by casting to float32
+  "Box bound precision lowered by casting to {}".format(self.dtype)
+        enableCameraSensors: False
+    sim:
+        dt: 0.02
+        substeps: 2
+        up_axis: z
+        use_gpu_pipeline: True
+        gravity: [0.0, 0.0, -9.81]
+        physx:
+            num_threads: 4
+            solver_type: 1
+            use_gpu: True
+            num_position_iterations: 4
+            num_velocity_iterations: 1
+            contact_offset: 0.02
+            rest_offset: 0.0
+            bounce_threshold_velocity: 0.2
+            max_depenetration_velocity: 100.0
+            default_buffer_size_multiplier: 5.0
+            max_gpu_contact_pairs: 8388608
+            num_subscenes: 4
+            contact_collection: 1
+    task:
+        randomize: False
+        randomization_params:
+            frequency: 600
+            observations:
+                range: [0, 0.002]
+                operation: additive
+                distribution: gaussian
+            actions:
+                range: [0.0, 0.02]
+                operation: additive
+                distribution: gaussian
+            sim_params:
+                gravity:
+                    range: [0, 0.4]
+                    operation: additive
+                    distribution: gaussian
+                    schedule: linear
+                    schedule_steps: 3000
+            actor_params:
+                anymal:
+                    color: True
+                    rigid_body_properties:
+                        mass:
+                            range: [0.5, 1.5]
+                            operation: scaling
+                            distribution: uniform
+                            setup_only: True
+                            schedule: linear
+                            schedule_steps: 3000
+                    rigid_shape_properties:
+                        friction:
+                            num_buckets: 500
+                            range: [0.7, 1.3]
+                            operation: scaling
+                            distribution: uniform
+                            schedule: linear
+                            schedule_steps: 3000
+                        restitution:
+                            range: [0.0, 0.7]
+                            operation: scaling
+                            distribution: uniform
+                            schedule: linear
+                            schedule_steps: 3000
+                    dof_properties:
+                        damping:
+                            range: [0.5, 1.5]
+                            operation: scaling
+                            distribution: uniform
+                            schedule: linear
+                            schedule_steps: 3000
+                        stiffness:
+                            range: [0.5, 1.5]
+                            operation: scaling
+                            distribution: uniform
+                            schedule: linear
+                            schedule_steps: 3000
+                        lower:
+                            range: [0, 0.01]
+                            operation: additive
+                            distribution: gaussian
+                            schedule: linear
+                            schedule_steps: 3000
+                        upper:
+                            range: [0, 0.01]
+                            operation: additive
+                            distribution: gaussian
+                            schedule: linear
+                            schedule_steps: 3000
+train:
+    params:
+        seed: 42
+        algo:
+            name: a2c_continuous
+        model:
+            name: continuous_a2c_logstd
+        network:
+            name: actor_critic
+            separate: False
+            space:
+                continuous:
+                    mu_activation: None
+                    sigma_activation: None
+                    mu_init:
+                        name: default
+                    sigma_init:
+                        name: const_initializer
+                        val: 0.0
+                    fixed_sigma: True
+            mlp:
+                units: [256, 128, 64]
+                activation: elu
+                d2rl: False
+                initializer:
+                    name: default
+                regularizer:
+                    name: None
+        load_checkpoint: False
+        load_path:
+        config:
+            name: Anymal
+            full_experiment_name: Anymal
+            env_name: rlgpu
+            ppo: True
+            mixed_precision: True
+            normalize_input: True
+            normalize_value: True
+            value_bootstrap: True
+            num_actors: 4096
+            reward_shaper:
+                scale_value: 1.0
+            normalize_advantage: True
+            gamma: 0.99
+            tau: 0.95
+            e_clip: 0.2
+            entropy_coef: 0.0
+            learning_rate: 0.0003
+            lr_schedule: adaptive
+            kl_threshold: 0.008
+            truncate_grads: True
+            grad_norm: 1.0
+            horizon_length: 24
+            minibatch_size: 32768
+            mini_epochs: 5
+            critic_coef: 2
+            clip_value: True
+            seq_len: 4
+            bounds_loss_coef: 0.001
+            max_epochs: 1000
+            save_best_after: 200
+            score_to_win: 20000
+            save_frequency: 50
+            print_stats: True
+task_name: Anymal
+experiment:
+num_envs:
+seed: 42
+torch_deterministic: False
+max_iterations:
+physics_engine: physx
+pipeline: gpu
+sim_device: cuda:0
+rl_device: cuda:0
+graphics_device_id: 0
+num_threads: 4
+solver_type: 1
+num_subscenes: 4
+test: False
+checkpoint:
+multi_gpu: False
+headless: False
+Setting seed: 42
+Started to train
+Exact experiment name requested from command line: Anymal
+[93m[1m[Warning] [carb.gym.plugin] useGpu is set, forcing single scene (0 subscenes)
+Not connected to PVD
++++ Using GPU PhysX
+Physics Engine: PhysX
+Physics Device: cuda:0
+GPU Pipeline: enabled
+Error executing job with overrides: ['task=Anymal']
+Traceback (most recent call last):
+  File "train.py", line 114, in launch_rlg_hydra
+    'play': cfg.test,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 139, in run
+    self.run_train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 122, in run_train
+    agent = self.algo_factory.create(self.algo_name, base_name='run', config=self.config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/object_factory.py", line 15, in create
+    return builder(**kwargs)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 23, in <lambda>
+    self.algo_factory.register_builder('a2c_continuous', lambda **kwargs : a2c_continuous.A2CAgent(**kwargs))
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/algos_torch/a2c_continuous.py", line 18, in __init__
+    a2c_common.ContinuousA2CBase.__init__(self, base_name, config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 973, in __init__
+    A2CBase.__init__(self, base_name, config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 84, in __init__
+    self.vec_env = vecenv.create_vec_env(self.env_name, self.num_actors, **self.env_config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/vecenv.py", line 282, in create_vec_env
+    return vecenv_config[vec_env_name](config_name, num_actors, **kwargs)
+  File "train.py", line 92, in <lambda>
+    lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs))
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 159, in __init__
+    self.env = env_configurations.configurations[config_name]['env_creator'](**kwargs)
+  File "train.py", line 95, in <lambda>
+    'env_creator': lambda **kwargs: create_rlgpu_env(**kwargs),
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 91, in create_rlgpu_env
+    headless=headless
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/anymal.py", line 147, in __init__
+    self.reset_idx(torch.arange(self.num_envs, device=self.device))
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/anymal.py", line 310, in reset_idx
+    self.commands_x[env_ids] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze()
+RuntimeError: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript (most recent call last):
+  File "/home/maria/isaacgym/python/isaacgym/torch_utils.py", line 196, in torch_rand_float
+def torch_rand_float(lower, upper, shape, device):
+    # type: (float, float, Tuple[int, int], str) -> Tensor
+    return (upper - lower) * torch.rand(*shape, device=device) + lower
+                             ~~~~~~~~~~ <--- HERE
+RuntimeError: CUDA error: an illegal memory access was encountered
+CUDA kernel errors might be asynchronously reported at some other API call,so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

@@ -1,0 +1,48 @@
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/gym/spaces/box.py:74: UserWarning: [33mWARN: Box bound precision lowered by casting to float32
+  "Box bound precision lowered by casting to {}".format(self.dtype)
+Started to train
+Exact experiment name requested from command line: Anymal
+[93m[1m[Warning] [carb.gym.plugin] useGpu is set, forcing single scene (0 subscenes)
+Error executing job with overrides: ['task=Anymal']
+Traceback (most recent call last):
+  File "train.py", line 113, in launch_rlg_hydra
+    'play': cfg.test,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 139, in run
+    self.run_train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 122, in run_train
+    agent = self.algo_factory.create(self.algo_name, base_name='run', config=self.config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/object_factory.py", line 15, in create
+    return builder(**kwargs)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 23, in <lambda>
+    self.algo_factory.register_builder('a2c_continuous', lambda **kwargs : a2c_continuous.A2CAgent(**kwargs))
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/algos_torch/a2c_continuous.py", line 18, in __init__
+    a2c_common.ContinuousA2CBase.__init__(self, base_name, config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 973, in __init__
+    A2CBase.__init__(self, base_name, config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 84, in __init__
+    self.vec_env = vecenv.create_vec_env(self.env_name, self.num_actors, **self.env_config)
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/vecenv.py", line 282, in create_vec_env
+    return vecenv_config[vec_env_name](config_name, num_actors, **kwargs)
+  File "train.py", line 91, in <lambda>
+    lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs))
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 166, in __init__
+    self.env = env_configurations.configurations[config_name]['env_creator'](**kwargs)
+  File "train.py", line 94, in <lambda>
+    'env_creator': lambda **kwargs: create_rlgpu_env(**kwargs),
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 91, in create_rlgpu_env
+    headless=headless
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/anymal.py", line 146, in __init__
+    self.reset_idx(torch.arange(self.num_envs, device=self.device))
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/anymal.py", line 335, in reset_idx
+    self.commands_yaw[env_ids] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze()
+RuntimeError: torch_rand_float() Expected a value of type 'float' for argument 'lower' but instead found type 'str'.
+Position: 0
+Value: '-3.14.'
+Declaration: torch_rand_float(float lower, float upper, (int, int) shape, str device) -> (Tensor)
+Cast error details: Unable to cast Python instance to C++ type (compile in debug mode for details)
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+Not connected to PVD
++++ Using GPU PhysX
+Physics Engine: PhysX
+Physics Device: cuda:0
+GPU Pipeline: enabled

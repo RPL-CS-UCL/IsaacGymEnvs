@@ -22,33 +22,38 @@ env:
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
 
   randomCommandVelocityRanges:
-    linear_x: [-2., 2.] # min max [m/s]
-    linear_y: [-1., 1.]   # min max [m/s]
-    yaw: [-1., 1.]          # min max [rad/s]
+    linear_x: [-1.0, 1.0] # min max [m/s]
+    linear_y: [-1.0, 1.0]   # min max [m/s]
+    yaw: [-3.14, 3.14]          # min max [rad/s]
 
   control:
     # PD Drive parameters:
     stiffness: 85.0  # [N*m/rad]
     damping: 2.0     # [N*m*s/rad]
-    actionScale: 0.5
+    actionScale: 0.9
     controlFrequencyInv: 1 # 60 Hz
+  
 
   defaultJointAngles:  # = target angles when action = 0.0
-    LF_HAA: 0.03    # [rad]
-    LH_HAA: 0.03    # [rad]
-    RF_HAA: -0.03   # [rad]
-    RH_HAA: -0.03   # [rad]
+  
+    FR_hip_joint: -0.1   # [rad]
+    FR_thigh_joint: 0.8    # [rad]
+    FR_calf_joint: -1.5   # [rad]
+    FL_hip_joint: 0.1   # [rad]
 
-    LF_HFE: 0.4     # [rad]
-    LH_HFE: -0.4    # [rad]
-    RF_HFE: 0.4     # [rad]
-    RH_HFE: -0.4    # [rad]
+    FL_thigh_joint: 0.8     # [rad]
+    FL_calf_joint: -1.5    # [rad]
+    RR_hip_joint: -0.1     # [rad]
+    RR_thigh_joint: 1.0    # [rad]
 
-    LF_KFE: -0.8    # [rad]
-    LH_KFE: 0.8     # [rad]
-    RF_KFE: -0.8    # [rad]
-    RH_KFE: 0.8     # [rad]
+    RR_calf_joint: -1.5    # [rad]
+    RL_hip_joint: 0.1     # [rad]
+    RL_thigh_joint: 1.0    # [rad]
+    RL_calf_joint: -1.5     # [rad]
+  
 
+
+  
   urdfAsset:
     collapseFixedJoints: True
     fixBaseLink: False
@@ -56,9 +61,22 @@ env:
 
   learn:
     # rewards
-    linearVelocityXYRewardScale: 1.0
-    angularVelocityZRewardScale: 0.5
-    torqueRewardScale: -0.000025 
+    linearVelocityXYRewardScale: 1.1
+    linearVelocityZRewardScale: -4.0
+    angularVelocityXYRewardScale: -0.05
+    angularVelocityZRewardScale: 1.0
+    torqueRewardScale: -0.00002
+    orientationRewardScale: -2.4
+    jointaccRewardScale: -0.0005
+    baseheightRewardScale: -5.0
+    footairtimeRewardScale : 0.3
+    kneecollisionRewardScale: -0.25
+    actionrateRewardScale: -0.01
+    footcontactRewardScale: -0.05
+    gaitRewardScale: -0.1
+    hipRewardScale: -0.25
+
+
 
     # normalization
     linearVelocityScale: 2.0
@@ -80,7 +98,7 @@ env:
 
 sim:
   dt: 0.02
-  substeps: 2
+  substeps: 1
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
   gravity: [0.0, 0.0, -9.81]
@@ -102,7 +120,7 @@ sim:
 task:
   randomize: False
   randomization_params:
-    frequency: 600   # Define how many environment steps between generating new randomizations
+    frequency: 500   # Define how many environment steps between generating new randomizations
     observations:
       range: [0, .002] # range for the white noise
       operation: "additive"

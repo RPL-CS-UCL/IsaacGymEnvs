@@ -1,0 +1,102 @@
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/gym/spaces/box.py:74: UserWarning: [33mWARN: Box bound precision lowered by casting to float32
+  "Box bound precision lowered by casting to {}".format(self.dtype)
+Started to train
+Exact experiment name requested from command line: Anymal
+[93m[1m[Warning] [carb.gym.plugin] useGpu is set, forcing single scene (0 subscenes)
+Not connected to PVD
++++ Using GPU PhysX
+Physics Engine: PhysX
+Physics Device: cuda:0
+GPU Pipeline: enabled
+Box([-1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1.], [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.], (12,), float32) Box([-inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf], [inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf], (48,), float32)
+Env info:
+{'action_space': Box([-1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1.], [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.], (12,), float32), 'observation_space': Box([-inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf], [inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf], (48,), float32)}
+RunningMeanStd:  (1,)
+build mlp: 48
+sigma
+actor_mlp.0.weight
+actor_mlp.0.bias
+actor_mlp.2.weight
+actor_mlp.2.bias
+actor_mlp.4.weight
+actor_mlp.4.bias
+value.weight
+value.bias
+mu.weight
+mu.bias
+RunningMeanStd:  (48,)
+fps step: 12049.0 fps step and policy inference: 11925.8  fps total: 11448.3
+fps step: 12015.8 fps step and policy inference: 11875.6  fps total: 11395.3
+fps step: 11868.9 fps step and policy inference: 11731.4  fps total: 11386.5
+Traceback (most recent call last):
+  File "train.py", line 117, in <module>
+    launch_rlg_hydra()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/main.py", line 52, in decorated_main
+    config_name=config_name,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 378, in _run_hydra
+    lambda: hydra.run(
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 211, in run_and_report
+    return func()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 381, in <lambda>
+    overrides=args.overrides,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/hydra.py", line 106, in run
+    configure_logging=with_log_configuration,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/core/utils.py", line 160, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "train.py", line 113, in launch_rlg_hydra
+    'play': cfg.test,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 139, in run
+    self.run_train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 125, in run_train
+    agent.train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 1143, in train
+    step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 1011, in train_epoch
+    batch_dict = self.play_steps()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 616, in play_steps
+    self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 443, in env_step
+    obs, rewards, dones, infos = self.vec_env.step(actions)
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 169, in step
+    return  self.env.step(action)
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/base/vec_task.py", line 323, in step
+    self.render()
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/base/vec_task.py", line 399, in render
+    self.gym.draw_viewer(self.viewer, self.sim, True)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "train.py", line 117, in <module>
+    launch_rlg_hydra()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/main.py", line 52, in decorated_main
+    config_name=config_name,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 378, in _run_hydra
+    lambda: hydra.run(
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 211, in run_and_report
+    return func()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/utils.py", line 381, in <lambda>
+    overrides=args.overrides,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/_internal/hydra.py", line 106, in run
+    configure_logging=with_log_configuration,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/hydra/core/utils.py", line 160, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "train.py", line 113, in launch_rlg_hydra
+    'play': cfg.test,
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 139, in run
+    self.run_train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/torch_runner.py", line 125, in run_train
+    agent.train()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 1143, in train
+    step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 1011, in train_epoch
+    batch_dict = self.play_steps()
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 616, in play_steps
+    self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+  File "/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/rl_games/common/a2c_common.py", line 443, in env_step
+    obs, rewards, dones, infos = self.vec_env.step(actions)
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/utils/rlgames_utils.py", line 169, in step
+    return  self.env.step(action)
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/base/vec_task.py", line 323, in step
+    self.render()
+  File "/home/maria/isaacgym/python/IsaacGymEnvs/isaacgymenvs/tasks/base/vec_task.py", line 399, in render
+    self.gym.draw_viewer(self.viewer, self.sim, True)
+KeyboardInterrupt

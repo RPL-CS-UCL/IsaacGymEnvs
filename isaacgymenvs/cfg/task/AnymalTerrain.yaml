@@ -32,6 +32,7 @@ env:
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
+    height : 0.4 # [m]  height of A1 when standing up
 
   randomCommandVelocityRanges:
     # train
@@ -49,25 +50,27 @@ env:
     decimation: 4
 
   defaultJointAngles:  # = target angles when action = 0.0
-    LF_HAA: 0.03    # [rad]
-    LH_HAA: 0.03    # [rad]
-    RF_HAA: -0.03   # [rad]
-    RH_HAA: -0.03   # [rad]
 
-    LF_HFE: 0.4     # [rad]
-    LH_HFE: -0.4    # [rad]
-    RF_HFE: 0.4     # [rad]
-    RH_HFE: -0.4    # [rad]
+    FR_hip_joint: -0.1   # [rad]
+    FR_thigh_joint: 0.8    # [rad]
+    FR_calf_joint: -1.5   # [rad]
+    FL_hip_joint: 0.1   # [rad]
 
-    LF_KFE: -0.8    # [rad]
-    LH_KFE: 0.8     # [rad]
-    RF_KFE: -0.8    # [rad]
-    RH_KFE: 0.8     # [rad]
+    FL_thigh_joint: 0.8     # [rad]
+    FL_calf_joint: -1.5    # [rad]
+    RR_hip_joint: -0.1     # [rad]
+    RR_thigh_joint: 1.0    # [rad]
+
+    RR_calf_joint: -1.5    # [rad]
+    RL_hip_joint: 0.1     # [rad]
+    RL_thigh_joint: 1.0    # [rad]
+    RL_calf_joint: -1.5     # [rad]
+  
 
   urdfAsset:
-    file: "urdf/anymal_c/urdf/anymal_minimal.urdf"
-    footName: SHANK # SHANK if collapsing fixed joint, FOOT otherwise
-    kneeName: THIGH
+    file: "urdf/unitree_a1/urdf/a1.urdf"
+    footName: calf # SHANK if collapsing fixed joint, FOOT otherwise
+    kneeName: thigh
     collapseFixedJoints: True
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
@@ -79,17 +82,19 @@ env:
     linearVelocityXYRewardScale: 1.0
     linearVelocityZRewardScale: -4.0
     angularVelocityXYRewardScale: -0.05
-    angularVelocityZRewardScale: 0.5
-    orientationRewardScale: -0. #-1.
+    angularVelocityZRewardScale: 1
+    orientationRewardScale: -2.4 #-1.
     torqueRewardScale: -0.00002 # -0.000025
     jointAccRewardScale: -0.0005 # -0.0025
-    baseHeightRewardScale: -0.0 #5
-    feetAirTimeRewardScale:  1.0
+    baseHeightRewardScale: -5.0 #5
+    feetAirTimeRewardScale:  0.3
     kneeCollisionRewardScale: -0.25 
     feetStumbleRewardScale: -0. #-2.0
     actionRateRewardScale: -0.01
+    footcontactRewardScale: -0.05
+    gaitRewardScale: -0.1
     # cosmetics
-    hipRewardScale: -0. #25
+    hipRewardScale: -0.25 #25
 
     # normalization
     linearVelocityScale: 2.0
@@ -101,11 +106,11 @@ env:
     # noise 
     addNoise: true
     noiseLevel: 1.0 # scales other values
-    dofPositionNoise: 0.01
-    dofVelocityNoise: 1.5
+    dofPositionNoise: 0.0005
+    dofVelocityNoise: 0.01
     linearVelocityNoise: 0.1
-    angularVelocityNoise: 0.2
-    gravityNoise: 0.05
+    angularVelocityNoise: 0.0001
+    gravityNoise: 0.00002
     heightMeasurementNoise: 0.06
 
     #randomization

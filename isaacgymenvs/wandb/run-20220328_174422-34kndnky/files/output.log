@@ -1,0 +1,73 @@
+Started to train
+Exact experiment name requested from command line: Anymal
+/home/maria/miniconda3/envs/isaac/lib/python3.6/site-packages/gym/spaces/box.py:74: UserWarning: [33mWARN: Box bound precision lowered by casting to float32
+  "Box bound precision lowered by casting to {}".format(self.dtype)
+[93m[1m[Warning] [carb.gym.plugin] useGpu is set, forcing single scene (0 subscenes)
+Not connected to PVD
++++ Using GPU PhysX
+Physics Engine: PhysX
+Physics Device: cuda:0
+GPU Pipeline: enabled
+Box([-1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1.], [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.], (12,), float32) Box([-inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf], [inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf], (48,), float32)
+Env info:
+{'action_space': Box([-1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1. -1.], [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.], (12,), float32), 'observation_space': Box([-inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf], [inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf inf], (48,), float32)}
+RunningMeanStd:  (1,)
+build mlp: 48
+sigma
+actor_mlp.0.weight
+actor_mlp.0.bias
+actor_mlp.2.weight
+actor_mlp.2.bias
+actor_mlp.4.weight
+actor_mlp.4.bias
+value.weight
+value.bias
+mu.weight
+mu.bias
+RunningMeanStd:  (48,)
+fps step: 12223.1 fps step and policy inference: 12096.0  fps total: 11604.4
+fps step: 11955.9 fps step and policy inference: 11819.1  fps total: 11352.2
+fps step: 11938.4 fps step and policy inference: 11802.7  fps total: 11467.8
+fps step: 11856.2 fps step and policy inference: 11705.5  fps total: 11287.0
+fps step: 11779.4 fps step and policy inference: 11645.3  fps total: 11250.3
+fps step: 11738.2 fps step and policy inference: 11607.5  fps total: 11182.4
+fps step: 11723.8 fps step and policy inference: 11605.7  fps total: 11195.9
+fps step: 11701.8 fps step and policy inference: 11579.4  fps total: 11164.6
+fps step: 11684.0 fps step and policy inference: 11555.2  fps total: 11139.5
+fps step: 11610.9 fps step and policy inference: 11488.4  fps total: 11069.0
+fps step: 11659.7 fps step and policy inference: 11530.0  fps total: 11086.8
+fps step: 11624.2 fps step and policy inference: 11496.0  fps total: 11116.9
+fps step: 11515.7 fps step and policy inference: 11389.9  fps total: 10977.1
+fps step: 11628.7 fps step and policy inference: 11506.6  fps total: 11095.1
+fps step: 11585.7 fps step and policy inference: 11466.0  fps total: 11074.3
+fps step: 11454.2 fps step and policy inference: 11332.9  fps total: 10944.8
+fps step: 11595.1 fps step and policy inference: 11476.4  fps total: 11053.3
+fps step: 11545.7 fps step and policy inference: 11422.6  fps total: 11036.0
+fps step: 11570.0 fps step and policy inference: 11450.3  fps total: 11042.5
+fps step: 11423.8 fps step and policy inference: 11297.0  fps total: 10893.6
+fps step: 11485.1 fps step and policy inference: 11361.9  fps total: 10961.5
+fps step: 11593.3 fps step and policy inference: 11473.4  fps total: 11107.2
+fps step: 11492.1 fps step and policy inference: 11371.4  fps total: 10949.0
+fps step: 11465.6 fps step and policy inference: 11339.2  fps total: 10900.9
+fps step: 11446.4 fps step and policy inference: 11321.0  fps total: 10888.1
+fps step: 11469.8 fps step and policy inference: 11347.0  fps total: 10950.4
+fps step: 11474.8 fps step and policy inference: 11349.1  fps total: 10924.3
+fps step: 11423.0 fps step and policy inference: 11290.7  fps total: 10946.0
+fps step: 11544.2 fps step and policy inference: 11420.8  fps total: 11002.3
+fps step: 11426.1 fps step and policy inference: 11302.3  fps total: 10942.3
+fps step: 11435.6 fps step and policy inference: 11314.6  fps total: 10950.1
+fps step: 11464.6 fps step and policy inference: 11342.2  fps total: 11016.7
+fps step: 11442.8 fps step and policy inference: 11322.1  fps total: 10898.6
+fps step: 11493.4 fps step and policy inference: 11368.9  fps total: 10941.1
+fps step: 11416.3 fps step and policy inference: 11288.9  fps total: 10866.8
+fps step: 11510.3 fps step and policy inference: 11383.5  fps total: 10984.6
+fps step: 11527.9 fps step and policy inference: 11403.3  fps total: 10975.2
+fps step: 11602.7 fps step and policy inference: 11480.2  fps total: 11040.7
+fps step: 11551.2 fps step and policy inference: 11427.6  fps total: 10980.1
+fps step: 11539.8 fps step and policy inference: 11421.2  fps total: 10987.7
+fps step: 11475.1 fps step and policy inference: 11353.5  fps total: 10925.3
+fps step: 11506.4 fps step and policy inference: 11386.4  fps total: 11007.6
+fps step: 11436.5 fps step and policy inference: 11314.4  fps total: 10879.9
+fps step: 11527.6 fps step and policy inference: 11407.5  fps total: 10982.7
+fps step: 11487.2 fps step and policy inference: 11363.6  fps total: 10937.0
+fps step: 11537.3 fps step and policy inference: 11415.1  fps total: 10980.0
