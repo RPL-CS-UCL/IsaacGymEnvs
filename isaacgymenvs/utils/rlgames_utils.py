@@ -97,14 +97,14 @@ def get_rlgames_env_creator(
         return env
     return create_rlgpu_env
 
-import wandb
+
 
 class RLGPUAlgoObserver(AlgoObserver):
     """Allows us to log stats from the env along with the algorithm running stats. """
 	
 
     def __init__(self):
-        wandb.init(project="test-project", entity="legged-rpl")
+        
         pass
 
     def after_init(self, algo):
@@ -155,8 +155,7 @@ class RLGPUAlgoObserver(AlgoObserver):
             self.writer.add_scalar('scores/mean', mean_scores, frame)
             self.writer.add_scalar('scores/iter', mean_scores, epoch_num)
             self.writer.add_scalar('scores/time', mean_scores, total_time)
-            wandb.log({"scores_mean" : mean_scores})
-
+           
 
 class RLGPUEnv(vecenv.IVecEnv):
     def __init__(self, config_name, num_actors, **kwargs):
