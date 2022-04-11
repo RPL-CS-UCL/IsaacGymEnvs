@@ -36,6 +36,8 @@ from .base.vec_task import VecTask
 import torch
 from typing import Tuple, Dict
 
+# terrain generator
+from isaacgym.terrain_utils import *
 
 class AnymalTerrain(VecTask):
 
@@ -89,6 +91,10 @@ class AnymalTerrain(VecTask):
         # default joint positions
         self.named_default_joint_angles = self.cfg["env"]["defaultJointAngles"]
 
+        #joint limits 
+
+        self.torque_limits = self.cfg["env"]["learn"]["torque_limit"]
+
         # other
         self.decimation = self.cfg["env"]["control"]["decimation"]
         self.dt = self.decimation * self.cfg["sim"]["dt"]
@@ -139,7 +145,8 @@ class AnymalTerrain(VecTask):
         self.torques = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
+        #self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
+        self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         self.height_points = self.init_height_points()
@@ -428,7 +435,7 @@ class AnymalTerrain(VecTask):
 
         # cosmetic penalty for hip motion
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
-        #[0,3,6,9] - default positions for hip from the yaml file 
+        #[0,3,6,9] - default positions for hip from
 
         # total reward
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
@@ -513,7 +520,7 @@ class AnymalTerrain(VecTask):
         self.actions = actions.clone().to(self.device)
         for i in range(self.decimation):
             torques = torch.clip(self.Kp*(self.action_scale*self.actions + self.default_dof_pos - self.dof_pos) - self.Kd*self.dof_vel,
-                                 -30., 30.)
+                                 -self.torque_limits, self.torque_limits)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
             self.gym.simulate(self.sim)
@@ -647,59 +654,6 @@ class AnymalTerrain(VecTask):
         terrain.height_field_raw += z_upsampled.astype(np.int16)
         return terrain
 
-
-# terrain generator
-from isaacgym.terrain_utils import *
-class Terrain:
-    def __init__(self, cfg, num_robots) -> None:
-
-        self.type = cfg["terrainType"]
-        if self.type in ["none", 'plane']:
-            return
-        self.horizontal_scale = 0.1
-        self.vertical_scale = 0.005
-        self.border_size = 20
-        self.num_per_env = 2
-        self.env_length = cfg["mapLength"]
-        self.env_width = cfg["mapWidth"]
-        self.proportions = [np.sum(cfg["terrainProportions"][:i+1]) for i in range(len(cfg["terrainProportions"]))]
-
-        self.env_rows = cfg["numLevels"]
-        self.env_cols = cfg["numTerrains"]
-        self.num_maps = self.env_rows * self.env_cols
-        self.num_per_env = int(num_robots / self.num_maps)
-        self.env_origins = np.zeros((self.env_rows, self.env_cols, 3))
-
-        self.width_per_env_pixels = int(self.env_width / self.horizontal_scale)
-        self.length_per_env_pixels = int(self.env_length / self.horizontal_scale)
-
-        self.border = int(self.border_size/self.horizontal_scale)
-        self.tot_cols = int(self.env_cols * self.width_per_env_pixels) + 2 * self.border
-        self.tot_rows = int(self.env_rows * self.length_per_env_pixels) + 2 * self.border
-
-        self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
-        
-        for k in range(self.num_maps):
-            (i, j) = np.unravel_index(k, (self.env_rows, self.env_cols))
-
-            start_x = self.border + i * self.length_per_env_pixels
-            end_x = self.border + (i + 1) * self.length_per_env_pixels
-            start_y = self.border + j * self.width_per_env_pixels
-            end_y = self.border + (j + 1) * self.width_per_env_pixels
-
-            terrain = SubTerrain("terrain",
-                              width=self.width_per_env_pixels,
-                              length=self.width_per_env_pixels,
-                              vertical_scale=self.vertical_scale,
-                              horizontal_scale=self.horizontal_scale)
-
-            self.height_field_raw[start_x: end_x, start_y:end_y] = terrain.height_field_raw
-
-        self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
-        #self.randomized_terrain()   
-        self.heightsamples = self.height_field_raw
-        self.vertices, self.triangles = convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
-    
 
 @torch.jit.script
 def quat_apply_yaw(quat, vec):

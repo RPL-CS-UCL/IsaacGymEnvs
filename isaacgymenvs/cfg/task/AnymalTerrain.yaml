@@ -81,7 +81,7 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1.urdf"
-    footName: "foot" # SHANK if collapsing fixed joint, FOOT otherwise
+    footName: "knee" # SHANK if collapsing fixed joint, FOOT otherwise
     kneeName: "thigh"
     collapseFixedJoints: True
     fixBaseLink: false
@@ -107,6 +107,11 @@ env:
     gaitRewardScale: -0.1
     # cosmetics
     hipRewardScale: -0.25 #25
+    #limits
+    torque_limit: 30.
+
+
+    
 
     # normalization
     linearVelocityScale: 2.0
