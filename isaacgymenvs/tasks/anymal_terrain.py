@@ -29,11 +29,10 @@
 import numpy as np
 import os, time
 
-from isaacgym.torch_utils import *
 from isaacgym import gymtorch
 from isaacgym import gymapi
-from tasks.base.vec_task import VecTask
-
+from isaacgym.torch_utils import *
+from .base.vec_task import VecTask
 import torch
 from typing import Tuple, Dict
 
@@ -47,6 +46,7 @@ class AnymalTerrain(VecTask):
         self.custom_origins = False
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
         self.init_done = False
+        dt = self.cfg["env"]["dt"]
 
         # normalization
         self.lin_vel_scale = self.cfg["env"]["learn"]["linearVelocityScale"]
@@ -58,21 +58,22 @@ class AnymalTerrain(VecTask):
 
         # reward scales
         self.rew_scales = {}
-        self.rew_scales["termination"] = self.cfg["env"]["learn"]["terminalReward"] 
-        self.rew_scales["lin_vel_xy"] = self.cfg["env"]["learn"]["linearVelocityXYRewardScale"] 
-        self.rew_scales["lin_vel_z"] = self.cfg["env"]["learn"]["linearVelocityZRewardScale"] 
-        self.rew_scales["ang_vel_z"] = self.cfg["env"]["learn"]["angularVelocityZRewardScale"] 
-        self.rew_scales["ang_vel_xy"] = self.cfg["env"]["learn"]["angularVelocityXYRewardScale"] 
-        self.rew_scales["orient"] = self.cfg["env"]["learn"]["orientationRewardScale"] 
-        self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
-        self.rew_scales["joint_acc"] = self.cfg["env"]["learn"]["jointAccRewardScale"]
-        self.rew_scales["base_height"] = self.cfg["env"]["learn"]["baseHeightRewardScale"]
-        self.rew_scales["air_time"] = self.cfg["env"]["learn"]["feetAirTimeRewardScale"]
-        self.rew_scales["collision"] = self.cfg["env"]["learn"]["kneeCollisionRewardScale"]
-        self.rew_scales["stumble"] = self.cfg["env"]["learn"]["feetStumbleRewardScale"]
-        self.rew_scales["action_rate"] = self.cfg["env"]["learn"]["actionRateRewardScale"]
-        self.rew_scales["hip"] = self.cfg["env"]["learn"]["hipRewardScale"]
+        self.rew_scales["termination"] = self.cfg["env"]["learn"]["terminalReward"] * dt
+        self.rew_scales["lin_vel_xy"] = self.cfg["env"]["learn"]["linearVelocityXYRewardScale"] * dt
+        self.rew_scales["lin_vel_z"] = self.cfg["env"]["learn"]["linearVelocityZRewardScale"] * dt
+        self.rew_scales["ang_vel_z"] = self.cfg["env"]["learn"]["angularVelocityZRewardScale"] * dt
+        self.rew_scales["ang_vel_xy"] = self.cfg["env"]["learn"]["angularVelocityXYRewardScale"] * dt
+        self.rew_scales["orient"] = self.cfg["env"]["learn"]["orientationRewardScale"] * dt
+        self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]* dt
+        self.rew_scales["joint_acc"] = self.cfg["env"]["learn"]["jointAccRewardScale"] * dt
+        self.rew_scales["base_height"] = self.cfg["env"]["learn"]["baseHeightRewardScale"]* dt
+        self.rew_scales["air_time"] = self.cfg["env"]["learn"]["feetAirTimeRewardScale"] * dt
+        self.rew_scales["collision"] = self.cfg["env"]["learn"]["kneeCollisionRewardScale"] * dt
+        self.rew_scales["stumble"] = self.cfg["env"]["learn"]["feetStumbleRewardScale"] * dt
+        self.rew_scales["action_rate"] = self.cfg["env"]["learn"]["actionRateRewardScale"] * dt
+        self.rew_scales["hip"] = self.cfg["env"]["learn"]["hipRewardScale"] * dt
 
+        
         #command ranges
         self.command_x_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_x"]
         self.command_y_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_y"]
@@ -159,15 +160,23 @@ class AnymalTerrain(VecTask):
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
 
+
+
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z') 
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
+       
+        self._create_trimesh()
+
+        #self._create_ground_plane()
+        '''
         terrain_type = self.cfg["env"]["terrain"]["terrainType"] 
         if terrain_type=='plane':
             self._create_ground_plane()
         elif terrain_type=='trimesh':
             self._create_trimesh()
             self.custom_origins = True
+        '''
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
     
     def _get_noise_scale_vec(self, cfg):
@@ -191,22 +200,62 @@ class AnymalTerrain(VecTask):
         plane_params.dynamic_friction = self.cfg["env"]["terrain"]["dynamicFriction"]
         plane_params.restitution = self.cfg["env"]["terrain"]["restitution"]
         self.gym.add_ground(self.sim, plane_params)
+  
 
     def _create_trimesh(self):
-        self.terrain = Terrain(self.cfg["env"]["terrain"], num_robots=self.num_envs)
+        self.horizontal_scale = 0.1
+        self.vertical_scale = 0.005
+        self.border_size = 20
+        self.num_per_env = 2
+        self.env_length = self.cfg["env"]["terrain"]["mapLength"]
+        self.env_width = self.cfg["env"]["terrain"]["mapWidth"]
+        self.proportions = [np.sum(self.cfg["env"]["terrain"]["terrainProportions"][:i+1]) for i in range(len(self.cfg["env"]["terrain"]["terrainProportions"]))]
+
+        self.env_rows = self.cfg["env"]["terrain"]["numLevels"]
+        self.env_cols = self.cfg["env"]["terrain"]["numTerrains"]
+        self.num_maps = self.env_rows * self.env_cols
+        self.num_per_env = int(self.num_envs / self.num_maps)
+        self.env_origins = np.zeros((self.env_rows, self.env_cols, 3))
+
+        self.width_per_env_pixels = int(self.env_width / self.horizontal_scale)
+        self.length_per_env_pixels = int(self.env_length / self.horizontal_scale)
+
+        self.border = int(self.border_size/self.horizontal_scale)
+        self.tot_cols = int(self.env_cols * self.width_per_env_pixels) + 2 * self.border
+        self.tot_rows = int(self.env_rows * self.length_per_env_pixels) + 2 * self.border
+
+        self.heightfield = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
+       
+        self.heightsamples = self.heightfield
+     
+        def new_sub_terrain(): return SubTerrain(width=self.tot_rows, length=self.tot_cols, vertical_scale=self.vertical_scale, horizontal_scale=self.horizontal_scale)
+
+        '''
+        subterrain = SubTerrain("terrain",
+                            width=self.tot_rows,
+                            length=self.tot_cols,
+                            vertical_scale=self.vertical_scale,
+                            horizontal_scale=self.horizontal_scale)
+        '''
+        self.heightfield[0:self.tot_rows, :] = random_uniform_terrain(terrain=new_sub_terrain(), min_height=self.cfg["env"]["terrain"]["min_height"], max_height= self.cfg["env"]["terrain"]["max_height"], step= self.cfg["env"]["terrain"]["step_size"], downsampled_scale= self.cfg["env"]["terrain"]["downsampled_scale"]).height_field_raw
+       
+     
+        self.vertices, self.triangles = convert_heightfield_to_trimesh(self.heightfield, self.horizontal_scale, self.vertical_scale, self.cfg["env"]["terrain"]["slopeTreshold"])
+        
         tm_params = gymapi.TriangleMeshParams()
-        tm_params.nb_vertices = self.terrain.vertices.shape[0]
-        tm_params.nb_triangles = self.terrain.triangles.shape[0]
-        tm_params.transform.p.x = -self.terrain.border_size 
-        tm_params.transform.p.y = -self.terrain.border_size
+        tm_params.nb_vertices = self.vertices.shape[0]
+        tm_params.nb_triangles = self.triangles.shape[0]
+        tm_params.transform.p.x = -self.border_size 
+        tm_params.transform.p.y = -self.border_size 
         tm_params.transform.p.z = 0.0
         tm_params.static_friction = self.cfg["env"]["terrain"]["staticFriction"]
         tm_params.dynamic_friction = self.cfg["env"]["terrain"]["dynamicFriction"]
         tm_params.restitution = self.cfg["env"]["terrain"]["restitution"]
 
-        self.gym.add_triangle_mesh(self.sim, self.terrain.vertices.flatten(order='C'), self.terrain.triangles.flatten(order='C'), tm_params)   
-        self.height_samples = torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
+        self.gym.add_triangle_mesh(self.sim, self.vertices.flatten(order='C'), self.triangles.flatten(order='C'), tm_params) 
 
+     
+  
     def _create_envs(self, num_envs, spacing, num_per_row):
         asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets')
         asset_file = self.cfg["env"]["urdfAsset"]["file"]
@@ -319,8 +368,6 @@ class AnymalTerrain(VecTask):
         rew_lin_vel_xy = torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
         rew_ang_vel_z = torch.exp(-ang_vel_error/0.25) * self.rew_scales["ang_vel_z"]
 
-
-
         # other base velocity penalties
         rew_lin_vel_z = torch.square(self.base_lin_vel[:, 2]) * self.rew_scales["lin_vel_z"]
         rew_ang_vel_xy = torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1) * self.rew_scales["ang_vel_xy"]
@@ -359,7 +406,7 @@ class AnymalTerrain(VecTask):
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
 
         # total reward
-        self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
+        self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
                     rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip 
         self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
 
@@ -517,13 +564,16 @@ class AnymalTerrain(VecTask):
         elif self.cfg["env"]["terrain"]["terrainType"] == 'none':
             raise NameError("Can't measure height with terrain type 'none'")
 
+        self.height_samples = torch.tensor(self.heightfield).view(self.tot_rows, self.tot_cols).to(self.device)
+
         if env_ids:
             points = quat_apply_yaw(self.base_quat[env_ids].repeat(1, self.num_height_points), self.height_points[env_ids]) + (self.root_states[env_ids, :3]).unsqueeze(1)
         else:
             points = quat_apply_yaw(self.base_quat.repeat(1, self.num_height_points), self.height_points) + (self.root_states[:, :3]).unsqueeze(1)
- 
-        points += self.terrain.border_size
-        points = (points/self.terrain.horizontal_scale).long()
+        points += self.cfg["env"]["terrain"]["border_size"]
+
+        points += self.cfg["env"]["terrain"]["border_size"]
+        points = (points/self.cfg["env"]["terrain"]["horizontal_scale"]).long()
         px = points[:, :, 0].view(-1)
         py = points[:, :, 1].view(-1)
         px = torch.clip(px, 0, self.height_samples.shape[0]-2)
@@ -534,7 +584,44 @@ class AnymalTerrain(VecTask):
         heights2 = self.height_samples[px+1, py+1]
         heights = torch.min(heights1, heights2)
 
-        return heights.view(self.num_envs, -1) * self.terrain.vertical_scale
+        return heights.view(self.num_envs, -1) * self.cfg["env"]["terrain"]["vertical_scale"]
+
+    def random_uniform_terrain(terrain, min_height, max_height, step=1, downsampled_scale=None,):
+        """
+        Generate a uniform noise terrain
+
+        Parameters
+            terrain (SubTerrain): the terrain
+            min_height (float): the minimum height of the terrain [meters]
+            max_height (float): the maximum height of the terrain [meters]
+            step (float): minimum height change between two points [meters]
+            downsampled_scale (float): distance between two randomly sampled points ( musty be larger or equal to terrain.horizontal_scale)
+
+        """
+        if downsampled_scale is None:
+            downsampled_scale = terrain.horizontal_scale
+
+        # switch parameters to discrete units
+        min_height = int(min_height / terrain.vertical_scale)
+        max_height = int(max_height / terrain.vertical_scale)
+        step = int(step / terrain.vertical_scale)
+
+        heights_range = np.arange(min_height, max_height + step, step)
+        height_field_downsampled = np.random.choice(heights_range, (int(terrain.width * terrain.horizontal_scale / downsampled_scale), int(
+            terrain.length * terrain.horizontal_scale / downsampled_scale)))
+
+        x = np.linspace(0, terrain.width * terrain.horizontal_scale, height_field_downsampled.shape[0])
+        y = np.linspace(0, terrain.length * terrain.horizontal_scale, height_field_downsampled.shape[1])
+
+        f = interpolate.interp2d(y, x, height_field_downsampled, kind='linear')
+
+        x_upsampled = np.linspace(0, terrain.width * terrain.horizontal_scale, terrain.width)
+        y_upsampled = np.linspace(0, terrain.length * terrain.horizontal_scale, terrain.length)
+        z_upsampled = np.rint(f(y_upsampled, x_upsampled))
+
+        terrain.height_field_raw += z_upsampled.astype(np.int16)
+        return terrain
+
 
 # terrain generator
 from isaacgym.terrain_utils import *
@@ -566,107 +653,28 @@ class Terrain:
         self.tot_rows = int(self.env_rows * self.length_per_env_pixels) + 2 * self.border
 
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
-        self.randomized_terrain()   
-        self.heightsamples = self.height_field_raw
-        self.vertices, self.triangles = convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
-    
-    def randomized_terrain(self):
+        
         for k in range(self.num_maps):
-            # Env coordinates in the world
             (i, j) = np.unravel_index(k, (self.env_rows, self.env_cols))
-            
-            # Heightfield coordinate system from now on
+
             start_x = self.border + i * self.length_per_env_pixels
             end_x = self.border + (i + 1) * self.length_per_env_pixels
             start_y = self.border + j * self.width_per_env_pixels
             end_y = self.border + (j + 1) * self.width_per_env_pixels
-            
+
             terrain = SubTerrain("terrain",
                               width=self.width_per_env_pixels,
                               length=self.width_per_env_pixels,
                               vertical_scale=self.vertical_scale,
                               horizontal_scale=self.horizontal_scale)
-            choice = np.random.uniform(0, 1)
-            if choice < 0.1:
-                if np.random.choice([0, 1]):
-                    pyramid_sloped_terrain(terrain, np.random.choice([-0.3, -0.2, 0, 0.2, 0.3]))
-                    random_uniform_terrain(terrain, min_height=-0.1, max_height=0.1, step=0.05, downsampled_scale=0.2)
-                else:
-                    pyramid_sloped_terrain(terrain, np.random.choice([-0.3, -0.2, 0, 0.2, 0.3]))
-            elif choice < 0.6:
-                step_height = np.random.choice([-0.18, -0.15, -0.1, -0.05, 0.05, 0.1, 0.15, 0.18])
-                step_height = np.random.choice([-0.15, 0.15])
-                pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
-            elif choice < 1.:
-                discrete_obstacles_terrain(terrain, 0.15, 1., 2., 40, platform_size=3.)
 
             self.height_field_raw[start_x: end_x, start_y:end_y] = terrain.height_field_raw
 
-            env_origin_x = (i + 0.5) * self.env_length
-            env_origin_y = (j + 0.5) * self.env_width
-            x1 = int((self.env_length/2. - 1) / self.horizontal_scale)
-            x2 = int((self.env_length/2. + 1) / self.horizontal_scale)
-            y1 = int((self.env_width/2. - 1) / self.horizontal_scale)
-            y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
-            env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
-            self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-    '''
-    def curiculum(self, num_robots, num_terrains, num_levels):
-        num_robots_per_map = int(num_robots / num_terrains)
-        left_over = num_robots % num_terrains
-        idx = 0
-        for j in range(num_terrains):
-            for i in range(num_levels):
-                terrain = SubTerrain("terrain",
-                                    width=self.width_per_env_pixels,
-                                    length=self.width_per_env_pixels,
-                                    vertical_scale=self.vertical_scale,
-                                    horizontal_scale=self.horizontal_scale)
-                difficulty = i / num_levels
-                choice = j / num_terrains
-
-                slope = difficulty * 0.4
-                step_height = 0.05 + 0.175 * difficulty
-                discrete_obstacles_height = 0.025 + difficulty * 0.15
-                stepping_stones_size = 2 - 1.8 * difficulty
-                if choice < self.proportions[0]:
-                    if choice < 0.05:
-                        slope *= -1
-                    pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-                elif choice < self.proportions[1]:
-                    if choice < 0.15:
-                        slope *= -1
-                    pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-                    random_uniform_terrain(terrain, min_height=-0.1, max_height=0.1, step=0.025, downsampled_scale=0.2)
-                elif choice < self.proportions[3]:
-                    if choice<self.proportions[2]:
-                        step_height *= -1
-                    pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
-                elif choice < self.proportions[4]:
-                    discrete_obstacles_terrain(terrain, discrete_obstacles_height, 1., 2., 40, platform_size=3.)
-                else:
-                    stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=0.1, max_height=0., platform_size=3.)
-
-                # Heightfield coordinate system
-                start_x = self.border + i * self.length_per_env_pixels
-                end_x = self.border + (i + 1) * self.length_per_env_pixels
-                start_y = self.border + j * self.width_per_env_pixels
-                end_y = self.border + (j + 1) * self.width_per_env_pixels
-                self.height_field_raw[start_x: end_x, start_y:end_y] = terrain.height_field_raw
-
-                robots_in_map = num_robots_per_map
-                if j < left_over:
-                    robots_in_map +=1
-
-                env_origin_x = (i + 0.5) * self.env_length
-                env_origin_y = (j + 0.5) * self.env_width
-                x1 = int((self.env_length/2. - 1) / self.horizontal_scale)
-                x2 = int((self.env_length/2. + 1) / self.horizontal_scale)
-                y1 = int((self.env_width/2. - 1) / self.horizontal_scale)
-                y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
-                env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
-                self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-    '''
+        self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
+        #self.randomized_terrain()   
+        self.heightsamples = self.height_field_raw
+        self.vertices, self.triangles = convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
+    
 
 @torch.jit.script
 def quat_apply_yaw(quat, vec):

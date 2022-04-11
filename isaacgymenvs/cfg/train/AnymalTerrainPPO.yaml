@@ -77,5 +77,5 @@ params:
     max_epochs: ${resolve_default:1500,${....max_iterations}}
     save_best_after: 100
     score_to_win: 20000
-    save_frequency: 50
+    save_frequency: 500
     print_stats: True

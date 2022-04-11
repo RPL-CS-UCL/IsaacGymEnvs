@@ -9,6 +9,7 @@ env:
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
+  dt: 0.02
 
   terrain:
     terrainType: trimesh # none, plane, or trimesh
@@ -18,14 +19,24 @@ env:
     # rough terrain only:
     curriculum: true
     maxInitMapLevel: 0
-    mapLength: 8.
-    mapWidth: 8.
-    numLevels: 10
-    numTerrains: 20
+    mapLength: 100.
+    mapWidth: 100.
+    numLevels: 1
+    numTerrains: 1
     # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
     terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
     # tri mesh only:
     slopeTreshold: 0.5
+    horizontal_scale: 0.1
+    vertical_scale: 0.005
+    border_size: 20
+    num_per_env: 2
+    max_height: 0.025 #m
+    min_height: -0.075 #m
+    step_size: 0.01 #m
+    downsampled_scale: 0.2 #m
+
+
 
   baseInitState:
     pos: [0.0, 0.0, 0.62] # x,y,z [m]

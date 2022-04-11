@@ -32,7 +32,6 @@ import os
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
-
 from .base.vec_task import VecTask
 
 from typing import Tuple, Dict
@@ -163,6 +162,8 @@ class Anymal(VecTask):
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
+
+    
 
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
