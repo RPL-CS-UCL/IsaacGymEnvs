@@ -74,6 +74,7 @@ class AnymalTerrain(VecTask):
         self.rew_scales["stumble"] = self.cfg["env"]["learn"]["feetStumbleRewardScale"] * dt
         self.rew_scales["action_rate"] = self.cfg["env"]["learn"]["actionRateRewardScale"] * dt
         self.rew_scales["hip"] = self.cfg["env"]["learn"]["hipRewardScale"] * dt
+        self.rew_scales["gait"] = self.cfg["env"]["learn"]["gaitRewardScale"] * dt
 
         
         #command ranges
@@ -148,7 +149,6 @@ class AnymalTerrain(VecTask):
         #self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
-
         self.height_points = self.init_height_points()
         self.measured_heights = 0
 
@@ -166,6 +166,8 @@ class AnymalTerrain(VecTask):
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
+
+
 
 
 
@@ -353,31 +355,8 @@ class AnymalTerrain(VecTask):
             self.reset_buf |= torch.any(knee_contact, dim=1)
 
         self.reset_buf = torch.where(self.timeout_buf.bool(), torch.ones_like(self.reset_buf), self.reset_buf)
-    '''
-    def _compute_torques(self, actions):
-        """ Compute torques from actions.
-            Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
-            [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
-
-        Args:
-            actions (torch.Tensor): Actions
-
-        Returns:
-            [torch.Tensor]: Torques sent to the simulation
-        """
-        #pd controller
-        actions_scaled = actions * self.cfg.control.action_scale
-        control_type = self.cfg.control.control_type
-        if control_type=="P":
-            torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
-        elif control_type=="V":
-            torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
-        elif control_type=="T":
-            torques = actions_scaled
-        else:
-            raise NameError(f"Unknown controller type: {control_type}")
-        return torch.clip(torques, -self.torque_limits, self.torque_limits)
-    '''
+ 
+  
     def compute_observations(self):
         self.measured_heights = self.get_heights()
         heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.height_meas_scale
@@ -437,10 +416,36 @@ class AnymalTerrain(VecTask):
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
         #[0,3,6,9] - default positions for hip from
 
+        #gait reward 
+        joints = {
+            "FRH": self.dof_pos[:, 0],
+            "FRT": self.dof_pos[:, 1],
+            "FRC": self.dof_pos[:, 2],
+            "FLH": self.dof_pos[:, 3],
+            "FLT": self.dof_pos[:, 4],
+            "FLC": self.dof_pos[:, 5],
+            "RRH": self.dof_pos[:, 6],
+            "RRT": self.dof_pos[:, 7],
+            "RRC": self.dof_pos[:, 8],
+            "RLH": self.dof_pos[:, 9],
+            "RLT": self.dof_pos[:, 10],
+            "RLC": self.dof_pos[:, 11]
+        }
+
+
+        #self.L = [[joints["FLT"], joints["FLC"],joints["FRT"],joints["FRC"]],[joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]]]
+        self.L = [[joints["FLT"],joints["RRT"]] ,[joints["FLC"],joints["RRC"]],[joints["FRT"],joints["RLT"]],[joints["FRC"],joints["RLC"]]]
+        #self.L = torch.tensor([[joints["FLT"], joints["FLC"],joints["FRT"],joints["FRC"]],[joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]],])
+        rew_gait = torch.sum(torch.abs(self.L[:, 0] - self.L[:, 1]), dim=1)* self.rew_scales["gait"]
+        #rew_gait = torch.sum(torch.abs(joints["FLT"] - joints["RRT"]), dim=1)* self.rew_scales["gait"]
+
         # total reward
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
                     rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip 
         self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
+
+     
+
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
