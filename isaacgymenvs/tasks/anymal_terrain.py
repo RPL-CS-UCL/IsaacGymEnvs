@@ -150,7 +150,10 @@ class AnymalTerrain(VecTask):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.height_points = self.init_height_points()
+        self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.measured_heights = 0
+        self.FL = torch.zeros(self.num_envs,1,4, dtype=torch.float, device=self.device, requires_grad=False)
+        self.RL = torch.zeros(self.num_envs,1,4, dtype=torch.float, device=self.device, requires_grad=False)
 
         # joint positions offsets
         self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
@@ -162,7 +165,7 @@ class AnymalTerrain(VecTask):
         torch_zeros = lambda : torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
         self.episode_sums = {"lin_vel_xy": torch_zeros(), "lin_vel_z": torch_zeros(), "ang_vel_z": torch_zeros(), "ang_vel_xy": torch_zeros(),
                              "orient": torch_zeros(), "torques": torch_zeros(), "joint_acc": torch_zeros(), "base_height": torch_zeros(),
-                             "air_time": torch_zeros(), "collision": torch_zeros(), "stumble": torch_zeros(), "action_rate": torch_zeros(), "hip": torch_zeros()}
+                             "air_time": torch_zeros(), "collision": torch_zeros(), "stumble": torch_zeros(), "action_rate": torch_zeros(), "hip": torch_zeros(), "gait" : torch_zeros()}
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
@@ -308,6 +311,8 @@ class AnymalTerrain(VecTask):
         knee_names = [s for s in body_names if knee_name in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         self.base_index = 0
+        
+    
 
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
@@ -372,6 +377,8 @@ class AnymalTerrain(VecTask):
         
 
     def compute_reward(self):
+
+        '''
         # velocity tracking reward
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
@@ -414,9 +421,11 @@ class AnymalTerrain(VecTask):
 
         # cosmetic penalty for hip motion
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
+
+        print(self.dof_pos.size())
         #[0,3,6,9] - default positions for hip from
 
-        #gait reward 
+        #gait reward - diagonal feet
         joints = {
             "FRH": self.dof_pos[:, 0],
             "FRT": self.dof_pos[:, 1],
@@ -433,17 +442,103 @@ class AnymalTerrain(VecTask):
         }
 
 
-        #self.L = [[joints["FLT"], joints["FLC"],joints["FRT"],joints["FRC"]],[joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]]]
-        self.L = [[joints["FLT"],joints["RRT"]] ,[joints["FLC"],joints["RRC"]],[joints["FRT"],joints["RLT"]],[joints["FRC"],joints["RLC"]]]
-        #self.L = torch.tensor([[joints["FLT"], joints["FLC"],joints["FRT"],joints["FRC"]],[joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]],])
-        rew_gait = torch.sum(torch.abs(self.L[:, 0] - self.L[:, 1]), dim=1)* self.rew_scales["gait"]
-        #rew_gait = torch.sum(torch.abs(joints["FLT"] - joints["RRT"]), dim=1)* self.rew_scales["gait"]
+        #right side
+        RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
+        RL = torch.t(RL)
 
+        #left side
+        FL = torch.stack((joints["FLT"],joints["FLC"],joints["FRT"],joints["FRC"]),0)
+        FL = torch.t(FL)
+        rew_gait = torch.sum(torch.abs(FL[:] - RL[:]), dim=1)* self.rew_scales["gait"]
+
+
+        # feet contact penalty
+        feet_contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1.
+        rew_feet_contact = torch.sum(feet_contact, dim=1) * self.rew_scales["stamble"] # sum vs any ?
+
+  
         # total reward
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
-                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip 
+                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip + rew_gait +rew_feet_contact
         self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
 
+        '''
+        ################################### ETH WAY ##################################################################
+
+        rew_lin_vel_z= torch.square(self.base_lin_vel[:, 2]) * self.rew_scales["lin_vel_z"]
+    
+        rew_ang_vel_xy = torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1) * self.rew_scales["ang_vel_xy"]
+    
+        rew_orient = torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1) * self.rew_scales["orient"]
+
+  
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        rew_base_height= torch.square(base_height - 0.25) * self.rew_scales["base_height"]
+    
+        rew_torque=torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
+
+    
+        rew_joint_acc=  torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1) * self.rew_scales["joint_acc"]
+    
+        rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
+    
+        rew_collision = torch.sum(1.*(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=-1) > 0.1), dim=1) * self.rew_scales["collision"]
+
+       
+        # Tracking of linear velocity commands (xy axes)
+        lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        rew_lin_vel_xy= torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
+
+    
+        # Tracking of angular velocity commands (yaw) 
+        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
+        rew_ang_vel_z= torch.exp(-ang_vel_error/0.25)* self.rew_scales["ang_vel_z"]
+
+
+        # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        contact_filt = torch.logical_or(contact, self.last_contacts) 
+        self.last_contacts = contact
+        first_contact = (self.feet_air_time > 0.) * contact_filt
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact_filt
+        
+        #gait reward - diagonal feet
+        joints = {
+            "FRH": self.dof_pos[:, 0],
+            "FRT": self.dof_pos[:, 1],
+            "FRC": self.dof_pos[:, 2],
+            "FLH": self.dof_pos[:, 3],
+            "FLT": self.dof_pos[:, 4],
+            "FLC": self.dof_pos[:, 5],
+            "RRH": self.dof_pos[:, 6],
+            "RRT": self.dof_pos[:, 7],
+            "RRC": self.dof_pos[:, 8],
+            "RLH": self.dof_pos[:, 9],
+            "RLT": self.dof_pos[:, 10],
+            "RLC": self.dof_pos[:, 11]
+        }
+
+
+        #right side
+        RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
+        RL = torch.t(RL)
+
+        #left side
+        FL = torch.stack((joints["FLT"],joints["FLC"],joints["FRT"],joints["FRC"]),0)
+        FL = torch.t(FL)
+        rew_gait = torch.sum(torch.abs(FL[:] - RL[:]), dim=1)* self.rew_scales["gait"]
+
+        # cosmetic penalty for hip motion
+        rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
+
+        rew_feet_contact = torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  100).clip(min=0.), dim=1)
+        
+        self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
+                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime  +rew_feet_contact +rew_hip +rew_gait
+        self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
      
 
 
@@ -463,6 +558,7 @@ class AnymalTerrain(VecTask):
         self.episode_sums["air_time"] += rew_airTime
         self.episode_sums["base_height"] += rew_base_height
         self.episode_sums["hip"] += rew_hip
+        self.episode_sums["gait"] += rew_gait
                                                 
     def reset_idx(self, env_ids):
         positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
@@ -552,7 +648,7 @@ class AnymalTerrain(VecTask):
         forward = quat_apply(self.base_quat, self.forward_vec)
         heading = torch.atan2(forward[:, 1], forward[:, 0])
         self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
-
+        
         # compute observations, rewards, resets, ...
         self.check_termination()
         self.compute_reward()

@@ -17,7 +17,7 @@ env:
     dynamicFriction: 1.0  # [-]
     restitution: 0.        # [-]
     # rough terrain only:
-    curriculum: true
+    curriculum: False
     maxInitMapLevel: 0
     mapLength: 100.
     mapWidth: 100.
@@ -57,7 +57,7 @@ env:
     stiffness: 20.0  # [N*m/rad]
     damping: 0.5     # [N*m*s/rad]
     # action scale: target angle = actionScale * action + defaultAngle
-    actionScale: 9
+    actionScale: 0.25
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
 
@@ -81,14 +81,14 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1.urdf"
-    footName: "knee" # SHANK if collapsing fixed joint, FOOT otherwise
+    footName: "foot" # SHANK if collapsing fixed joint, FOOT otherwise
     kneeName: "thigh"
     collapseFixedJoints: True
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
-    allowKneeContacts: true
+    allowKneeContacts: false
     # rewards
     terminalReward: 0.0
     linearVelocityXYRewardScale: 1.1
@@ -101,7 +101,7 @@ env:
     baseHeightRewardScale: -5.0 #5
     feetAirTimeRewardScale:  0.3
     kneeCollisionRewardScale: -0.25 
-    feetStumbleRewardScale: -0. #-2.0
+    feetStumbleRewardScale: -0.05 #-2.0
     actionRateRewardScale: -0.01
     footcontactRewardScale: -0.05
     gaitRewardScale: -0.1
@@ -160,14 +160,14 @@ sim:
     use_gpu: ${contains:"cuda",${....sim_device}} # set to False to run on CPU
     num_position_iterations: 4
     num_velocity_iterations: 1
-    contact_offset: 0.02
+    contact_offset: 0.01 #0.02
     rest_offset: 0.0
-    bounce_threshold_velocity: 0.2
-    max_depenetration_velocity: 100.0
+    bounce_threshold_velocity: 0.5 #0.2
+    max_depenetration_velocity: 1 #100.0
     default_buffer_size_multiplier: 5.0
     max_gpu_contact_pairs: 8388608 # 8*1024*1024
     num_subscenes: ${....num_subscenes}
-    contact_collection: 1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
+    contact_collection: 2 #1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
 task:
   randomize: False
