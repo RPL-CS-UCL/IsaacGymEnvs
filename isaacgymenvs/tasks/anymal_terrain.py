@@ -377,6 +377,7 @@ class AnymalTerrain(VecTask):
         
 
     def compute_reward(self):
+        "hard coded vs eth very simmilar paper"
 
         '''
         # velocity tracking reward
