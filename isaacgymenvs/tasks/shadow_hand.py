@@ -28,14 +28,15 @@
 
 import numpy as np
 import os
-import torch
+
 
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
 
 from isaacgymenvs.utils.torch_jit_utils import *
-from .base.vec_task import VecTask
+from isaacgymenvs.tasks.base.vec_task import VecTask
+import torch
 
 
 class ShadowHand(VecTask):

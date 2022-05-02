@@ -32,7 +32,7 @@ import os, time
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
-from .base.vec_task import VecTask
+from isaacgymenvs.tasks.base.vec_task import VecTask
 import torch
 from typing import Tuple, Dict
 
@@ -170,25 +170,17 @@ class AnymalTerrain(VecTask):
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
 
-
-
-
-
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z') 
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
-       
-        self._create_trimesh()
-
-        #self._create_ground_plane()
-        '''
+      
         terrain_type = self.cfg["env"]["terrain"]["terrainType"] 
         if terrain_type=='plane':
             self._create_ground_plane()
         elif terrain_type=='trimesh':
             self._create_trimesh()
-            self.custom_origins = True
-        '''
+            #self.custom_origins = True
+       
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
     
     def _get_noise_scale_vec(self, cfg):
@@ -213,7 +205,6 @@ class AnymalTerrain(VecTask):
         plane_params.restitution = self.cfg["env"]["terrain"]["restitution"]
         self.gym.add_ground(self.sim, plane_params)
   
-
     def _create_trimesh(self):
         self.horizontal_scale = 0.1
         self.vertical_scale = 0.005
@@ -265,8 +256,6 @@ class AnymalTerrain(VecTask):
         tm_params.restitution = self.cfg["env"]["terrain"]["restitution"]
 
         self.gym.add_triangle_mesh(self.sim, self.vertices.flatten(order='C'), self.triangles.flatten(order='C'), tm_params) 
-
-     
   
     def _create_envs(self, num_envs, spacing, num_per_row):
         asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets')
@@ -311,8 +300,6 @@ class AnymalTerrain(VecTask):
         knee_names = [s for s in body_names if knee_name in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         self.base_index = 0
-        
-    
 
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
@@ -341,7 +328,7 @@ class AnymalTerrain(VecTask):
             for s in range(len(rigid_shape_prop)):
                 rigid_shape_prop[s].friction = friction_buckets[i % num_buckets]
             self.gym.set_asset_rigid_shape_properties(anymal_asset, rigid_shape_prop)
-            anymal_handle = self.gym.create_actor(env_handle, anymal_asset, start_pose, "anymal", i, 0, 0)
+            anymal_handle = self.gym.create_actor(env_handle, anymal_asset, start_pose, "anymal", i, 1, 0)
             self.gym.set_actor_dof_properties(env_handle, anymal_handle, dof_props)
             self.envs.append(env_handle)
             self.anymal_handles.append(anymal_handle)
@@ -442,7 +429,6 @@ class AnymalTerrain(VecTask):
             "RLC": self.dof_pos[:, 11]
         }
 
-
         #right side
         RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
         RL = torch.t(RL)
@@ -452,12 +438,10 @@ class AnymalTerrain(VecTask):
         FL = torch.t(FL)
         rew_gait = torch.sum(torch.abs(FL[:] - RL[:]), dim=1)* self.rew_scales["gait"]
 
-
         # feet contact penalty
         feet_contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1.
         rew_feet_contact = torch.sum(feet_contact, dim=1) * self.rew_scales["stamble"] # sum vs any ?
 
-  
         # total reward
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
                     rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime + rew_hip + rew_gait +rew_feet_contact
@@ -475,10 +459,18 @@ class AnymalTerrain(VecTask):
   
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         rew_base_height= torch.square(base_height - 0.25) * self.rew_scales["base_height"]
+
+        '''
+        print('measured heights', self.measured_heights)
+        print('shape measured heights', self.measured_heights.shape)
+        print('base_height', base_height)
+        print('shape base_height',base_height.shape)
+        print('reward base_height', rew_base_height)
+        print('size reward base_height',rew_base_height)
+        '''
     
         rew_torque=torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
 
-    
         rew_joint_acc=  torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1) * self.rew_scales["joint_acc"]
     
         rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
@@ -489,22 +481,24 @@ class AnymalTerrain(VecTask):
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         rew_lin_vel_xy= torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
+        print('command velocity',self.commands[:, :2])
+        print('base velocity',self.base_lin_vel[:, :2])
+        print('contact forces',self.contact_forces[:, self.feet_indices, 2])
 
     
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         rew_ang_vel_z= torch.exp(-ang_vel_error/0.25)* self.rew_scales["ang_vel_z"]
 
-
         # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-        contact_filt = torch.logical_or(contact, self.last_contacts) 
-        self.last_contacts = contact
-        first_contact = (self.feet_air_time > 0.) * contact_filt
-        self.feet_air_time += self.dt
-        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
-        self.feet_air_time *= ~contact_filt
+        # contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        # contact_filt = torch.logical_or(contact, self.last_contacts) 
+        # self.last_contacts = contact
+        # first_contact = (self.feet_air_time > 0.) * contact_filt
+        # self.feet_air_time += self.dt
+        # rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
+        # rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        # self.feet_air_time *= ~contact_filt
         
         #gait reward - diagonal feet
         joints = {
@@ -522,7 +516,6 @@ class AnymalTerrain(VecTask):
             "RLC": self.dof_pos[:, 11]
         }
 
-
         #right side
         RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
         RL = torch.t(RL)
@@ -538,10 +531,8 @@ class AnymalTerrain(VecTask):
         rew_feet_contact = torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  100).clip(min=0.), dim=1)
         
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height+\
-                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate + rew_airTime  +rew_feet_contact +rew_hip +rew_gait
+                    rew_torque + rew_joint_acc + rew_collision + rew_action_rate   +rew_feet_contact +rew_hip +rew_gait
         self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
-     
-
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
@@ -556,7 +547,7 @@ class AnymalTerrain(VecTask):
         self.episode_sums["joint_acc"] += rew_joint_acc
         self.episode_sums["collision"] += rew_collision
         self.episode_sums["action_rate"] += rew_action_rate
-        self.episode_sums["air_time"] += rew_airTime
+        #self.episode_sums["air_time"] += rew_airTime
         self.episode_sums["base_height"] += rew_base_height
         self.episode_sums["hip"] += rew_hip
         self.episode_sums["gait"] += rew_gait

@@ -12,9 +12,9 @@ env:
   dt: 0.002
 
   terrain:
-    terrainType: trimesh # none, plane, or trimesh
-    staticFriction: 1.0  # [-]
-    dynamicFriction: 1.0  # [-]
+    terrainType: plane # none, plane, or trimesh
+    staticFriction: 1.25  # [-]
+    dynamicFriction: 0.9  # [-]
     restitution: 0.        # [-]
     # rough terrain only:
     curriculum: False
@@ -39,7 +39,7 @@ env:
 
 
   baseInitState:
-    pos: [0.0, 0.0, 0.42] # x,y,z [m]
+    pos: [0.0, 0.0, 0.15] # x,y,z [m]
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
@@ -81,8 +81,8 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1.urdf"
-    footName: "foot" # SHANK if collapsing fixed joint, FOOT otherwise
-    kneeName: "thigh"
+    footName: "foot" 
+    kneeName: "calf"
     collapseFixedJoints: True
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
@@ -118,7 +118,7 @@ env:
     angularVelocityScale: 0.25
     dofPositionScale: 1.0
     dofVelocityScale: 0.05
-    heightMeasurementScale: 5.0
+    heightMeasurementScale: 1.5
 
     # noise 
     addNoise: true
@@ -149,7 +149,7 @@ env:
   enableCameraSensors: False
 
 sim:
-  dt: 0.005
+  dt: 0.002
   substeps: 1
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
