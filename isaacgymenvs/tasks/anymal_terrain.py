@@ -48,7 +48,7 @@ class AnymalTerrain(VecTask):
         self.custom_origins = False
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
         self.init_done = False
-        dt = self.cfg["env"]["dt"]
+        dt = self.cfg["env"]["dt"] 
 
         # normalization
         self.lin_vel_scale = self.cfg["env"]["learn"]["linearVelocityScale"]
@@ -75,7 +75,7 @@ class AnymalTerrain(VecTask):
         self.rew_scales["action_rate"] = self.cfg["env"]["learn"]["actionRateRewardScale"] * dt
         self.rew_scales["hip"] = self.cfg["env"]["learn"]["hipRewardScale"] * dt
         self.rew_scales["gait"] = self.cfg["env"]["learn"]["gaitRewardScale"] * dt
-
+        print('rewards',self.rew_scales )
         
         #command ranges
         self.command_x_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_x"]
@@ -112,7 +112,7 @@ class AnymalTerrain(VecTask):
 
         super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
 
-        if self.graphics_device_id != -1:
+        if self.viewer !=None:
             p = self.cfg["env"]["viewer"]["pos"]
             lookat = self.cfg["env"]["viewer"]["lookat"]
             cam_pos = gymapi.Vec3(p[0], p[1], p[2])
@@ -173,12 +173,13 @@ class AnymalTerrain(VecTask):
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z') 
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
-      
-        terrain_type = self.cfg["env"]["terrain"]["terrainType"] 
-        if terrain_type=='plane':
-            self._create_ground_plane()
-        elif terrain_type=='trimesh':
-            self._create_trimesh()
+        self._create_ground_plane()
+
+        # terrain_type = self.cfg["env"]["terrain"]["terrainType"] 
+        # if terrain_type=='plane':
+        #     self._create_ground_plane()
+        # elif terrain_type=='trimesh':
+        #     self._create_trimesh()
             #self.custom_origins = True
        
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
@@ -202,7 +203,7 @@ class AnymalTerrain(VecTask):
         plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
         plane_params.static_friction = self.cfg["env"]["terrain"]["staticFriction"]
         plane_params.dynamic_friction = self.cfg["env"]["terrain"]["dynamicFriction"]
-        plane_params.restitution = self.cfg["env"]["terrain"]["restitution"]
+        #plane_params.restitution = self.cfg["env"]["terrain"]["restitution"]
         self.gym.add_ground(self.sim, plane_params)
   
     def _create_trimesh(self):
@@ -304,13 +305,13 @@ class AnymalTerrain(VecTask):
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
         # env origins
-        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-        if not self.curriculum: self.cfg["env"]["terrain"]["maxInitMapLevel"] = self.cfg["env"]["terrain"]["numLevels"] - 1
-        self.terrain_levels = torch.randint(0, self.cfg["env"]["terrain"]["maxInitMapLevel"]+1, (self.num_envs,), device=self.device)
-        self.terrain_types = torch.randint(0, self.cfg["env"]["terrain"]["numTerrains"], (self.num_envs,), device=self.device)
-        if self.custom_origins:
-            self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
-            spacing = 0.
+        # self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
+        # if not self.curriculum: self.cfg["env"]["terrain"]["maxInitMapLevel"] = self.cfg["env"]["terrain"]["numLevels"] - 1
+        # self.terrain_levels = torch.randint(0, self.cfg["env"]["terrain"]["maxInitMapLevel"]+1, (self.num_envs,), device=self.device)
+        # self.terrain_types = torch.randint(0, self.cfg["env"]["terrain"]["numTerrains"], (self.num_envs,), device=self.device)
+        # if self.custom_origins:
+        #     self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
+        #     spacing = 0.
 
         env_lower = gymapi.Vec3(-spacing, -spacing, 0.0)
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
@@ -319,16 +320,17 @@ class AnymalTerrain(VecTask):
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, num_per_row)
-            if self.custom_origins:
-                self.env_origins[i] = self.terrain_origins[self.terrain_levels[i], self.terrain_types[i]]
-                pos = self.env_origins[i].clone()
-                pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
-                start_pose.p = gymapi.Vec3(*pos)
+            # if self.custom_origins:
+            #     self.env_origins[i] = self.terrain_origins[self.terrain_levels[i], self.terrain_types[i]]
+            #     pos = self.env_origins[i].clone()
+            #     pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
+            #     start_pose.p = gymapi.Vec3(*pos)
             
             for s in range(len(rigid_shape_prop)):
                 rigid_shape_prop[s].friction = friction_buckets[i % num_buckets]
             self.gym.set_asset_rigid_shape_properties(anymal_asset, rigid_shape_prop)
-            anymal_handle = self.gym.create_actor(env_handle, anymal_asset, start_pose, "anymal", i, 1, 0)
+
+            anymal_handle = self.gym.create_actor(env_handle, anymal_asset, start_pose, "anymal", i, 0,0)
             self.gym.set_actor_dof_properties(env_handle, anymal_handle, dof_props)
             self.envs.append(env_handle)
             self.anymal_handles.append(anymal_handle)
@@ -460,14 +462,6 @@ class AnymalTerrain(VecTask):
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         rew_base_height= torch.square(base_height - 0.25) * self.rew_scales["base_height"]
 
-        '''
-        print('measured heights', self.measured_heights)
-        print('shape measured heights', self.measured_heights.shape)
-        print('base_height', base_height)
-        print('shape base_height',base_height.shape)
-        print('reward base_height', rew_base_height)
-        print('size reward base_height',rew_base_height)
-        '''
     
         rew_torque=torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
 
@@ -481,10 +475,7 @@ class AnymalTerrain(VecTask):
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         rew_lin_vel_xy= torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
-        print('command velocity',self.commands[:, :2])
-        print('base velocity',self.base_lin_vel[:, :2])
-        print('contact forces',self.contact_forces[:, self.feet_indices, 2])
-
+    
     
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
@@ -516,6 +507,7 @@ class AnymalTerrain(VecTask):
             "RLC": self.dof_pos[:, 11]
         }
 
+   
         #right side
         RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
         RL = torch.t(RL)
@@ -523,6 +515,7 @@ class AnymalTerrain(VecTask):
         #left side
         FL = torch.stack((joints["FLT"],joints["FLC"],joints["FRT"],joints["FRC"]),0)
         FL = torch.t(FL)
+        print('default',self.default_dof_pos)
         rew_gait = torch.sum(torch.abs(FL[:] - RL[:]), dim=1)* self.rew_scales["gait"]
 
         # cosmetic penalty for hip motion
@@ -562,7 +555,7 @@ class AnymalTerrain(VecTask):
         env_ids_int32 = env_ids.to(dtype=torch.int32)
 
         if self.custom_origins:
-            self.update_terrain_level(env_ids)
+            #self.update_terrain_level(env_ids)
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
             self.root_states[env_ids, :2] += torch_rand_float(-0.5, 0.5, (len(env_ids), 2), device=self.device)
@@ -593,17 +586,17 @@ class AnymalTerrain(VecTask):
         for key in self.episode_sums.keys():
             self.extras["episode"]['rew_' + key] = torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s
             self.episode_sums[key][env_ids] = 0.
-        self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+        # self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
 
-    def update_terrain_level(self, env_ids):
-        if not self.init_done or not self.curriculum:
-            # don't change on initial reset
-            return
-        distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
-        self.terrain_levels[env_ids] -= 1 * (distance < torch.norm(self.commands[env_ids, :2])*self.max_episode_length_s*0.25)
-        self.terrain_levels[env_ids] += 1 * (distance > self.terrain.env_length / 2)
-        self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
-        self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
+    # def update_terrain_level(self, env_ids):
+    #     if not self.init_done or not self.curriculum:
+    #         # don't change on initial reset
+    #         return
+    #     distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
+    #     self.terrain_levels[env_ids] -= 1 * (distance < torch.norm(self.commands[env_ids, :2])*self.max_episode_length_s*0.25)
+    #     self.terrain_levels[env_ids] += 1 * (distance > self.terrain.env_length / 2)
+    #     self.terrain_levels[env_ids] = torch.clip(self.terrain_levels[env_ids], 0) % self.terrain.env_rows
+    #     self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
 
     def push_robots(self):
         self.root_states[:, 7:9] = torch_rand_float(-1., 1., (self.num_envs, 2), device=self.device) # lin vel x/y
