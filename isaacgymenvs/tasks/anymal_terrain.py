@@ -360,14 +360,14 @@ class AnymalTerrain(VecTask):
 
           # collision penalty
 
-        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
+        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 0.
         rew_knee_collision = torch.sum(knee_contact, dim=1) * self.rew_scales["knee_collision"]
 
         #flip feet contacts
         # feet_contacts  = self.contact_forces[:, self.feet_indices, 2]
         # # print("contacts", feet_contacts)
         # is_con = self._is_contact(feet_contacts)
-        feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1.
+        feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 0.
         flip_contacts = self.flip(feet_contacts)
         rew_foot_contact = torch.sum(flip_contacts,dim=1) * self.rew_scales["foot_contact"] 
         # print("reward contacts", rew_foot_contact)
@@ -499,7 +499,8 @@ class AnymalTerrain(VecTask):
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
         for i in range(self.decimation):
-            torques = torch.clip(self.Kp*(self.action_scale*self.actions + self.default_dof_pos - self.dof_pos) - self.Kd*self.dof_vel,
+            actions_scaled =self.action_scale*self.actions
+            torques = torch.clip(actions_scaled,
                                  -self.torque_clip, -self.torque_clip)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
