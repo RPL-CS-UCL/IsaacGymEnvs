@@ -17,7 +17,7 @@ env:
     dynamicFriction: 0.9  # [-]
     restitution: 0.        # [-]
     # rough terrain only:
-    curriculum: false
+    curriculum: False
     maxInitMapLevel: 0
     mapLength: 100.
     mapWidth: 100.
@@ -39,11 +39,11 @@ env:
 
 
   baseInitState:
-    pos: [0.0, 0.0, 0.38] # x,y,z [m]
+    pos: [0.0, 0.0, 0.15] # x,y,z [m]
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
-    height : 0.4 #0.4 [m]  height of A1 when standing up
+    height : 0.25 #0.4 [m]  height of A1 when standing up
 
   randomCommandVelocityRanges:
     # train
@@ -53,7 +53,7 @@ env:
 
   control:
     # PD Drive parameters:
-    control_type: 'T'
+    control_type: 'P'
     stiffness: 20.0  # [N*m/rad]
     damping: 0.5     # [N*m*s/rad]
     # action scale: target angle = actionScale * action + defaultAngle
@@ -88,7 +88,7 @@ env:
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
-    allowKneeContacts: true
+    allowKneeContacts: false
     # rewards
     terminalReward: 0.0
     linearVelocityXYRewardScale: 1.1
@@ -109,7 +109,6 @@ env:
     hipRewardScale: -0.25 #25
     #limits
     torque_limit: 30.
-    target_height: 0.3
 
 
     
@@ -138,7 +137,7 @@ env:
     pushInterval_s: 15
 
     # episode length in seconds
-    episodeLength_s: 40
+    episodeLength_s: 20
 
   # viewer cam:
   viewer:
@@ -171,4 +170,4 @@ sim:
     contact_collection: 2 #1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
 task:
-  randomize: false
+  randomize: False
