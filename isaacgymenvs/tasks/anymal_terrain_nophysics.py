@@ -224,8 +224,12 @@ class AnymalTerrain(VecTask):
 
         self.env_rows = self.cfg["env"]["terrain"]["numLevels"]
         self.env_cols = self.cfg["env"]["terrain"]["numTerrains"]
-        self.num_maps = self.env_rows * self.env_cols
-        self.num_per_env = int(self.num_envs / self.num_maps)
+        s
+                env_origin_y = (j + 0.5) * self.env_width
+                x1 = int((self.env_length/2. - 1) / self.horizontal_scale)
+                x2 = int((self.env_length/2. + 1) / self.horizontal_scale)
+                y1 = int((self.env_width/2. - 1) / self.horizontal_scale)
+                y2 = int((self.env_width/2. + 1) / self.horizontal_scale)    self.num_per_env = int(self.num_envs / self.num_maps)
         self.env_origins = np.zeros((self.env_rows, self.env_cols, 3))
 
         self.width_per_env_pixels = int(self.env_width / self.horizontal_scale)

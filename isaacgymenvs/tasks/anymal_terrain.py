@@ -223,7 +223,7 @@ class AnymalTerrain(VecTask):
 
         asset_options = gymapi.AssetOptions()
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
-        asset_options.collapse_fixed_joints = True
+        asset_options.collapse_fixed_joints = False
         asset_options.replace_cylinder_with_capsule = True
         asset_options.flip_visual_attachments = True
         asset_options.fix_base_link = self.cfg["env"]["urdfAsset"]["fixBaseLink"]
@@ -248,15 +248,18 @@ class AnymalTerrain(VecTask):
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
-        body_names = self.gym.get_asset_rigid_body_names(anymal_asset)
+        self.joint_names = self.gym.get_asset_joint_names(anymal_asset)
+        self.body_names = self.gym.get_asset_rigid_body_names(anymal_asset)
         self.dof_names = self.gym.get_asset_dof_names(anymal_asset)
         foot_name = self.cfg["env"]["urdfAsset"]["footName"]
         knee_name = self.cfg["env"]["urdfAsset"]["kneeName"]
-        feet_names = [s for s in body_names if foot_name in s]
+        hip_name = self.cfg["env"]["urdfAsset"]["hipName"]
+        feet_names = [s for s in self.body_names if foot_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
-        knee_names = [s for s in body_names if knee_name in s]
+        knee_names = [s for s in self.body_names if knee_name in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
-        self.base_index = 0
+        hip_names = [s for s in self.dof_names if hip_name in s]
+        self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
 
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
@@ -294,15 +297,17 @@ class AnymalTerrain(VecTask):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], feet_names[i])
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], knee_names[i])
+        for i in range(len(knee_names)):
+            self.hip_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
 
         self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
 
     def check_termination(self):
+
         self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
-
         self.reset_buf = torch.where(self.timeout_buf.bool(), torch.ones_like(self.reset_buf), self.reset_buf)
     
     def compute_observations(self):
@@ -360,16 +365,18 @@ class AnymalTerrain(VecTask):
 
           # collision penalty
 
-        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 0.
+        knee_contact = (torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 0.)
         rew_knee_collision = torch.sum(knee_contact, dim=1) * self.rew_scales["knee_collision"]
 
         #flip feet contacts
         # feet_contacts  = self.contact_forces[:, self.feet_indices, 2]
         # # print("contacts", feet_contacts)
         # is_con = self._is_contact(feet_contacts)
+
+        forces = self.contact_forces[:, self.feet_indices, :]
         feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 0.
         flip_contacts = self.flip(feet_contacts)
-        rew_foot_contact = torch.sum(flip_contacts,dim=1) * self.rew_scales["foot_contact"] 
+        rew_foot_contact = torch.sum(flip_contacts, dim=1) * self.rew_scales["foot_contact"]
         # print("reward contacts", rew_foot_contact)
     
 
@@ -386,7 +393,7 @@ class AnymalTerrain(VecTask):
         # self.feet_air_time *= ~contact
 
         # cosmetic penalty for hip motion
-        rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
+        rew_hip = torch.sum(torch.abs(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1) * self.rew_scales["hip"]
 
         #gait reward 
         joints = {
@@ -396,7 +403,7 @@ class AnymalTerrain(VecTask):
             "FRH": self.dof_pos[:, 3],
             "FRT": self.dof_pos[:, 4],
             "FRC": self.dof_pos[:, 5],
-            "RRH": self.dof_pos[:, 6],
+            "RLH": self.dof_pos[:, 6],
             "RLT": self.dof_pos[:, 7],
             "RLC": self.dof_pos[:, 8],
             "RRH": self.dof_pos[:, 9],
@@ -405,19 +412,20 @@ class AnymalTerrain(VecTask):
         }
         
           #right side
-        RL = torch.stack((joints["RRT"],joints["RRC"],joints["RLT"],joints["RLC"]),0)
-        RL = torch.t(RL)
+        rl = torch.stack((joints["RRT"], joints["RRC"], joints["RLT"], joints["RLC"]), 0)
+        rl = torch.t(rl)
 
         #left side
-        FL = torch.stack((joints["FLT"],joints["FLC"],joints["FRT"],joints["FRC"]),0)
+        FL = torch.stack((joints["FLT"], joints["FLC"], joints["FRT"], joints["FRC"]), 0)
         FL = torch.t(FL)
-        rew_gait =torch.sum(torch.abs(FL[:] - RL[:]), dim=1)
+        rew_gait =torch.sum(torch.abs(FL[:] - rl[:]), dim=1)
 
 
         # total reward
-        self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-                    rew_torque + rew_joint_acc +  + rew_action_rate  + rew_hip + rew_knee_collision +rew_gait +rew_foot_contact
-        self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
+        rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
+            rew_torque + rew_joint_acc + rew_action_rate + rew_hip + rew_knee_collision + rew_gait + rew_foot_contact
+
+        self.rew_buf = torch.clip(rew_buf, min=0., max=None)
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
@@ -501,13 +509,14 @@ class AnymalTerrain(VecTask):
         for i in range(self.decimation):
             actions_scaled =self.action_scale*self.actions
             torques = torch.clip(actions_scaled,
-                                 -self.torque_clip, -self.torque_clip)
+                                 -self.torque_clip, self.torque_clip)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
             self.gym.simulate(self.sim)
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
+
 
     def post_physics_step(self):
         # self.gym.refresh_dof_state_tensor(self.sim) # done in step
@@ -538,6 +547,7 @@ class AnymalTerrain(VecTask):
 
         self.compute_observations()
         if self.add_noise:
+            self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
 
         self.last_actions[:] = self.actions[:]
