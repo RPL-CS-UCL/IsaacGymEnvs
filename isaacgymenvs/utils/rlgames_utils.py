@@ -155,6 +155,7 @@ class RLGPUAlgoObserver(AlgoObserver):
             self.writer.add_scalar('scores/mean', mean_scores, frame)
             self.writer.add_scalar('scores/iter', mean_scores, epoch_num)
             self.writer.add_scalar('scores/time', mean_scores, total_time)
+        print(self.writer)
            
 
 class RLGPUEnv(vecenv.IVecEnv):

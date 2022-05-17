@@ -4,7 +4,7 @@ name: AnymalTerrain
 physics_engine: 'physx'
 
 env:
-  numEnvs: ${resolve_default:4096,${...num_envs}}
+  numEnvs: 2000 #${resolve_default:4096,${...num_envs}}
   numObservations: 188
   numActions: 12
   envSpacing: 3.  # [m]
@@ -39,7 +39,7 @@ env:
 
 
   baseInitState:
-    pos: [0.0, 0.0, 0.38] # x,y,z [m]
+    pos: [0.0, 0.0, 0.35] # x,y,z [m]
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
@@ -88,12 +88,12 @@ env:
     footName: "foot" 
     kneeName: "calf"
     hipName: "hip"
-    collapseFixedJoints: false
+    collapseFixedJoints: False
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
-    allowKneeContacts: true
+    allowKneeContacts: false
     # rewards
     terminalReward: -0.0
     linearVelocityXYRewardScale: 1.1

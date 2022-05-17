@@ -158,6 +158,7 @@ class VecTask(Env):
         """
         super().__init__(config, sim_device, graphics_device_id, headless)
 
+        self.obs_buf = None
         self.sim_params = self.__parse_sim_params(self.cfg["physics_engine"], self.cfg["sim"])
         if self.cfg["physics_engine"] == "physx":
             self.physics_engine = gymapi.SIM_PHYSX

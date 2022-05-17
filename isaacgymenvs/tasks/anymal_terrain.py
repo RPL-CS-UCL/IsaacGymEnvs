@@ -41,6 +41,7 @@ from typing import Tuple, Dict
 class AnymalTerrain(VecTask):
 
     def __init__(self, cfg, sim_device, graphics_device_id, headless):
+        graphics_device_id
 
         self.cfg = cfg
         self.height_samples = None
@@ -226,7 +227,7 @@ class AnymalTerrain(VecTask):
         asset_options.collapse_fixed_joints = False
         asset_options.replace_cylinder_with_capsule = True
         asset_options.flip_visual_attachments = True
-        asset_options.fix_base_link = self.cfg["env"]["urdfAsset"]["fixBaseLink"]
+        asset_options.fix_base_link = False #self.cfg["env"]["urdfAsset"]["fixBaseLink"]
         asset_options.density = 0.001
         asset_options.angular_damping = 0.0
         asset_options.linear_damping = 0.0
@@ -297,14 +298,14 @@ class AnymalTerrain(VecTask):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], feet_names[i])
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], knee_names[i])
-        for i in range(len(knee_names)):
+        for i in range(len(hip_names)):
             self.hip_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
 
         self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
 
     def check_termination(self):
 
-        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        self.reset_buf = torch.norm(self.contact_forces[:, 1, :], dim=1) > 1.
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
@@ -384,15 +385,19 @@ class AnymalTerrain(VecTask):
         rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
 
         # air time reward
-        # contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1.
-        # contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-        # first_contact = (self.feet_air_time > 0.) * contact
-        # self.feet_air_time += self.dt
-        # rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) * self.rew_scales["air_time"] # reward only on first contact with the ground
-        # rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
-        # self.feet_air_time *= ~contact
+        contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1.
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        first_contact = (self.feet_air_time > 0.) * contact
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) * self.rew_scales["air_time"] # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact
 
         # cosmetic penalty for hip motion
+        pos = self.dof_pos[:, self.hip_indices]
+        dof_pos =self.default_dof_pos[:, self.hip_indices]
+        pos_size = self.dof_pos[:, self.hip_indices].size()
+        sub = self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1) * self.rew_scales["hip"]
 
         #gait reward 
@@ -412,18 +417,23 @@ class AnymalTerrain(VecTask):
         }
         
           #right side
-        rl = torch.stack((joints["RRT"], joints["RRC"], joints["RLT"], joints["RLC"]), 0)
-        rl = torch.t(rl)
+
+        rrc = joints["RRC"]
+        rl = torch.stack((joints["RRT"], joints["RRC"], joints["RLT"], joints["RLC"]), 1)
+        #rl = torch.t(rl)
 
         #left side
-        FL = torch.stack((joints["FLT"], joints["FLC"], joints["FRT"], joints["FRC"]), 0)
-        FL = torch.t(FL)
-        rew_gait =torch.sum(torch.abs(FL[:] - rl[:]), dim=1)
+        FL = torch.stack((joints["FLT"]  , joints["FLC"], joints["FRT"], joints["FRC"]), 1)
+        #FL = torch.t(FL)
+
+        answer = joints["FLT"] - joints["RRT"]
+        L = torch.abs(FL - rl)
+        rew_gait = torch.sum(torch.abs(FL - rl), dim=1)
 
 
         # total reward
         rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate + rew_hip + rew_knee_collision + rew_gait + rew_foot_contact
+            rew_torque + rew_joint_acc + rew_action_rate + rew_hip + rew_knee_collision + rew_airTime+ rew_foot_contact
 
         self.rew_buf = torch.clip(rew_buf, min=0., max=None)
 
@@ -440,10 +450,10 @@ class AnymalTerrain(VecTask):
         self.episode_sums["joint_acc"] += rew_joint_acc
         self.episode_sums["knee_collision"] += rew_knee_collision
         self.episode_sums["action_rate"] += rew_action_rate
-        # self.episode_sums["air_time"] += rew_airTime
+        self.episode_sums["air_time"] += rew_airTime
         self.episode_sums["base_height"] += rew_base_height
         self.episode_sums["hip"] += rew_hip
-        self.episode_sums["gait"] += rew_gait
+        #self.episode_sums["gait"] += rew_gait
         self.episode_sums["foot_contact"] += rew_foot_contact
              
                                                 
@@ -505,18 +515,39 @@ class AnymalTerrain(VecTask):
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def pre_physics_step(self, actions):
-        self.actions = actions.clone().to(self.device)
+
+        clip_actions = self.torque_clip
+        #self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
+        self.actions = actions
+
+
         for i in range(self.decimation):
-            actions_scaled =self.action_scale*self.actions
-            torques = torch.clip(actions_scaled,
-                                 -self.torque_clip, self.torque_clip)
-            self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
-            self.torques = torques.view(self.torques.shape)
+
+            self.torques = self._compute_torques(actions).view(self.torques.shape)
+            self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+
             self.gym.simulate(self.sim)
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
 
+    def _compute_torques(self, actions):
+        """ Compute torques from actions.
+            Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
+            [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
+
+        Args:
+            actions (torch.Tensor): Actions
+
+        Returns:
+            [torch.Tensor]: Torques sent to the simulation
+        """
+        # pd controller
+        print(actions)
+        actions_scaled =  torch.mul(actions, 9)
+        torques = actions_scaled
+
+        return torch.clip(torques, -self.torque_clip, self.torque_clip)
 
     def post_physics_step(self):
         # self.gym.refresh_dof_state_tensor(self.sim) # done in step
@@ -557,7 +588,7 @@ class AnymalTerrain(VecTask):
             # draw height lines
             self.gym.clear_lines(self.viewer)
             self.gym.refresh_rigid_body_state_tensor(self.sim)
-            sphere_geom = gymutil.WireframeSphereGeometry(0.02, 4, 4, None, color=(1, 1, 0))
+            sphere_geom = self.gymutil.WireframeSphereGeometry(0.02, 4, 4, None, color=(1, 1, 0))
             for i in range(self.num_envs):
                 base_pos = (self.root_states[i, :3]).cpu().numpy()
                 heights = self.measured_heights[i].cpu().numpy()
@@ -567,7 +598,7 @@ class AnymalTerrain(VecTask):
                     y = height_points[j, 1] + base_pos[1]
                     z = heights[j]
                     sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
-                    gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose) 
+                    gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)
 
     def init_height_points(self):
         # 1mx1.6m rectangle (without center line)
@@ -642,7 +673,7 @@ class Terrain:
         else:
             self.randomized_terrain()   
         self.heightsamples = self.height_field_raw
-        self.vertices, self.triangles = convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
+        self.vertices, self.triangles = self.convert_heightfield_to_trimesh(self.height_field_raw, self.horizontal_scale, self.vertical_scale, cfg["slopeTreshold"])
     
     def randomized_terrain(self):
         for k in range(self.num_maps):
