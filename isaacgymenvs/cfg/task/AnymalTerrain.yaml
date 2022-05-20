@@ -4,7 +4,7 @@ name: AnymalTerrain
 physics_engine: 'physx'
 
 env:
-  numEnvs: 2000 #${resolve_default:4096,${...num_envs}}
+  numEnvs: ${resolve_default:4096,${...num_envs}}
   numObservations: 188
   numActions: 12
   envSpacing: 3.  # [m]
@@ -66,29 +66,26 @@ env:
     FR_hip_joint: -0.1   # [rad]
     FR_thigh_joint: 0.8    # [rad]
     FR_calf_joint: -1.5   # [rad]
-    #FR_foot_fixed: 0.0
 
     FL_hip_joint: 0.1   # [rad]
     FL_thigh_joint: 0.8     # [rad]
     FL_calf_joint: -1.5    # [rad]
-    #FL_foot_fixed: 0.0
 
     RR_hip_joint: -0.1     # [rad]
     RR_thigh_joint: 1.0    # [rad]
     RR_calf_joint: -1.5    # [rad]
-    #RR_foot_fixed: 0.0
 
     RL_hip_joint: 0.1     # [rad]
     RL_thigh_joint: 1.0    # [rad]
     RL_calf_joint: -1.5     # [rad]
-    #RL_foot_fixed: 0.0
+
 
   urdfAsset:
-    file: "urdf/unitree_a1/urdf/a1.urdf"
+    file: "urdf/unitree_a1/urdf/a1_original.urdf"
     footName: "foot" 
     kneeName: "calf"
     hipName: "hip"
-    collapseFixedJoints: False
+    collapseFixedJoints: false
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
@@ -117,7 +114,6 @@ env:
     target_height: 0.3
 
 
-    
 
     # normalization
     linearVelocityScale: 2.0
@@ -139,6 +135,7 @@ env:
     #randomization
     randomizeFriction: true
     frictionRange: [0.5, 1.25]
+
     pushRobots: true
     pushInterval_s: 15
 
