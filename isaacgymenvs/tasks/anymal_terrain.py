@@ -228,8 +228,8 @@ class AnymalTerrain(VecTask):
         noise_vec[9:12] = 0. # commands
         noise_vec[12:24] = self.cfg["env"]["learn"]["dofPositionNoise"] * noise_level * self.dof_pos_scale
         noise_vec[24:36] = self.cfg["env"]["learn"]["dofVelocityNoise"] * noise_level * self.dof_vel_scale
-        noise_vec[36:176] = self.cfg["env"]["learn"]["heightMeasurementNoise"] * noise_level * self.height_meas_scale
-        noise_vec[176:188] = 0. # previous actions
+        #noise_vec[36:176] = self.cfg["env"]["learn"]["heightMeasurementNoise"] * noise_level * self.height_meas_scale
+        noise_vec[36:48] = 0. # previous actions
         return noise_vec
 
     def _create_ground_plane(self):
@@ -384,7 +384,6 @@ class AnymalTerrain(VecTask):
                                     self.commands[:, :3] * self.commands_scale,
                                     self.dof_pos * self.dof_pos_scale,
                                     self.dof_vel * self.dof_vel_scale,
-                                    heights,
                                     self.actions
                                     ),dim=-1)
 

@@ -5,7 +5,7 @@ physics_engine: 'physx'
 
 env:
   numEnvs: 2 # ${resolve_default:4096,${...num_envs}}
-  numObservations: 188
+  numObservations: 48
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
