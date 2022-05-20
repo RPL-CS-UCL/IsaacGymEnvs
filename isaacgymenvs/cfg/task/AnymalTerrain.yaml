@@ -4,7 +4,7 @@ name: AnymalTerrain
 physics_engine: 'physx'
 
 env:
-  numEnvs: ${resolve_default:4096,${...num_envs}}
+  numEnvs: 2 # ${resolve_default:4096,${...num_envs}}
   numObservations: 188
   numActions: 12
   envSpacing: 3.  # [m]

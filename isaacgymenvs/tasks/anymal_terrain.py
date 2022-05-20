@@ -366,7 +366,8 @@ class AnymalTerrain(VecTask):
 
     def check_termination(self):
         """ Check if environments need to be reset """
-        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1. #reset if base index touches the ground
+
+        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim= -1) > 1. #reset if base index touches the ground
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
