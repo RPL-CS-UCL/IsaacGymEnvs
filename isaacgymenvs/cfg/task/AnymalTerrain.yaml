@@ -63,25 +63,25 @@ env:
 
   defaultJointAngles:  # = target angles when action = 0.0
 
-    FR_hip_joint: -0.1   # [rad]
-    FR_thigh_joint: 0.8    # [rad]
-    FR_calf_joint: -1.5   # [rad]
+    FR_hip_joint: -0.1   # [rad] -0.1
+    FR_thigh_joint: 0.8    # [rad] 0.8
+    FR_calf_joint: -1.5   # [rad] -1.5
 
-    FL_hip_joint: 0.1   # [rad]
-    FL_thigh_joint: 0.8     # [rad]
-    FL_calf_joint: -1.5    # [rad]
+    FL_hip_joint: 0.1  # [rad] 0.1
+    FL_thigh_joint: 0.8     # [rad] 0.8
+    FL_calf_joint: -1.5    # [rad] -1.5
 
-    RR_hip_joint: -0.1     # [rad]
-    RR_thigh_joint: 1.0    # [rad]
-    RR_calf_joint: -1.5    # [rad]
+    RR_hip_joint: -0.1     # [rad] -0.1
+    RR_thigh_joint: 1.0    # [rad] 1.0
+    RR_calf_joint: -1.5    # [rad] -1.5
 
-    RL_hip_joint: 0.1     # [rad]
-    RL_thigh_joint: 1.0    # [rad]
-    RL_calf_joint: -1.5     # [rad]
+    RL_hip_joint: 0.1     # [rad] 0.1
+    RL_thigh_joint: 1.0    # [rad] 1.0
+    RL_calf_joint: -1.5     # [rad] -1.5
 
 
   urdfAsset:
-    file: "urdf/unitree_a1/urdf/a1_original.urdf"
+    file: "urdf/unitree_a1/urdf/a1_unitree.urdf"
     footName: "foot" 
     kneeName: "calf"
     hipName: "hip"
@@ -110,7 +110,7 @@ env:
     # cosmetics
     hipRewardScale: -0.25 #25
     #limits
-    torque_limit: 30.
+    torque_limit: 30. #30
     target_height: 0.3
 
 
@@ -136,7 +136,7 @@ env:
     randomizeFriction: true
     frictionRange: [0.5, 1.25]
 
-    pushRobots: true
+    pushRobots: false
     pushInterval_s: 15
 
     # episode length in seconds

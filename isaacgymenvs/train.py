@@ -96,7 +96,7 @@ def launch_rlg_hydra(cfg: DictConfig):
 
     rlg_config_dict = omegaconf_to_dict(cfg.train)
 
-    # convert CLI arguments into dictionory
+    # convert CLI arguments into dictionory``   
     # create runner and set the settings
     runner = Runner(RLGPUAlgoObserver())
     runner.load(rlg_config_dict)
@@ -117,4 +117,3 @@ if __name__ == "__main__":
     launch_rlg_hydra()
     from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter()
-
