@@ -282,9 +282,7 @@ class AnymalTerrain(VecTask):
         #Set asset options
         asset_options = gymapi.AssetOptions()
 
-        # Not necessary code (Rokas edit)
-        #asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
-        
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
         asset_options.collapse_fixed_joints = self.cfg["env"]["urdfAsset"]["collapseFixedJoints"]
         asset_options.replace_cylinder_with_capsule = True
         asset_options.flip_visual_attachments = True
@@ -360,13 +358,6 @@ class AnymalTerrain(VecTask):
             self.gym.set_asset_rigid_shape_properties(anymal_asset, rigid_shape_prop)
             anymal_handle = self.gym.create_actor(env_handle, anymal_asset, start_pose, "anymal", i, 0, 0)
             dof_props = self.gym.get_actor_dof_properties(env_handle, anymal_handle)
-
-            # Use torque control (Rokas edit)
-            dof_props['driveMode'][0] = gymapi.DOF_MODE_EFFORT
-            dof_props['driveMode'][1] = gymapi.DOF_MODE_NONE
-            dof_props['stiffness'][:] = 0.0
-            dof_props['damping'][:] = 0.0
-
             self.gym.set_actor_dof_properties(env_handle, anymal_handle, dof_props)
             self.envs.append(env_handle)
             self.anymal_handles.append(anymal_handle)
@@ -381,7 +372,7 @@ class AnymalTerrain(VecTask):
         #for i in range(len(hip_names)):
             #self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
 
-        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "trunk")
+        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
 
     def check_termination(self):
         """ Check if environments need to be reset """
