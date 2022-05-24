@@ -4,7 +4,7 @@ name: AnymalTerrain
 physics_engine: 'physx'
 
 env:
-  numEnvs: 2 # ${resolve_default:4096,${...num_envs}}
+  numEnvs: 4096 # ${resolve_default:4096,${...num_envs}}
   numObservations: 48
   numActions: 12
   envSpacing: 3.  # [m]
@@ -82,10 +82,10 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1_unitree.urdf"
-    footName: "foot" 
-    kneeName: "calf"
+    footName: "calf" 
+    kneeName: "thigh"
     hipName: "hip"
-    collapseFixedJoints: false
+    collapseFixedJoints: true
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
