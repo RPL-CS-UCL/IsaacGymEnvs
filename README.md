@@ -1,28 +1,72 @@
-# Isaac Gym Benchmark Environments
+# README: Intsalling IsaacGym
+## Prerequisites
+- Ubuntu 18.04 or 20.04.
+- Python 3.6, 3.7 or 3.8.
+- Minimum NVIDIA driver version: Linux: 470
 
-[Website](https://developer.nvidia.com/isaac-gym) | [Technical Paper](https://arxiv.org/abs/2108.10470) | [Videos](https://sites.google.com/view/isaacgym-nvidia)
+## Installation
+First the Isaac Gym Preview needs to be downloaded using the following link: 
+-[Isaac Gym Preview](https://developer.nvidia.com/isaac-gym-preview)
+All Installation instructions can be found on ~/isaacgym/docs/install.html
 
-
-### About this repository
-
-This repository contains example RL environments for the NVIDIA Isaac Gym high performance environments described [in our NeurIPS 2021 Datasets and Benchmarks paper](https://openreview.net/forum?id=fgFBtYgJQX_)
-
-
-### Installation
-
-Download the Isaac Gym Preview 3 release from the [website](https://developer.nvidia.com/isaac-gym), then
-follow the installation instructions in the documentation. We highly recommend using a conda environment 
-to simplify set up.
-
-Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
-directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 3 
-install instructions if you have any trouble running the samples.
-
-Once Isaac Gym is installed and samples work within your current python environment, install this repo:
+Open a terminal window 
 
 ```bash
-pip install -e .
+#move isaacgym folder to home directory
+cd ~/Downloads
+mv isaacgym ~/
+
+#install within a conda environment 
+cd ~/isaacgym/python
+conda env create -n ENVNAME --file rlgpu_conda_env.yml
+conda activate ENVNAME 
 ```
+
+Before running the setup.py the file has to be updated:
+
+1. Open ~/isaacgym/python/setup.py 
+2. Add line: after line 31 add  zip_safe=False,
+3. Modify Line: line 51 "imageio<=2.9.0", 
+
+Then run the setup.py script:
+```bash
+#Correct directory 
+cd  ~/isaacgym/python/setup.py 
+python setup.py
+
+#test installation
+cd examples
+python joint_monkey.py
+```
+
+Now install IsaacGymEnvs for reinforcement learning examples and environment. 
+
+```bash
+cd .. 
+
+#RPL forked version 
+git clone https://github.com/RPL-CS-UCL/IsaacGymEnvs.git
+
+#original version
+#git clone https://github.com/NVIDIA-Omniverse/IsaacGymEnvs.git
+
+#install python packages 
+pip install -e .
+
+#run training example 
+cd IsaacGymEnvs/isaacgymenvs
+python train.py task=Cartpole
+```
+
+For training through Pycharm:
+Create a project which use the newly created anaconda environment.
+In order to make it works it is necessary to add as environment parameter in the configuration of the executable this variable (change <user> with your username)
+ 
+LD_LIBRARY_PATH = /home/<user>/anaconda3/envs/isaacgym/lib
+      
+Also, add in the parameters the task you want to train:
+
+task=AnymalTerrain
 
 ### Running the benchmarks
 
@@ -171,3 +215,6 @@ If you use the Trifinger environment in your work, please ensure you cite the fo
   journal = {arXiv preprint arXiv:2108.09779}
 }
 ```
+
+For information refer to the Github Repository
+- [Isaac Gym Benchmark Environments](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs)
