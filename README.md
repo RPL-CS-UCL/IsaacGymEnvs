@@ -7,7 +7,7 @@
 ## Installation
 First the Isaac Gym Preview needs to be downloaded using the following link: 
 -[Isaac Gym Preview](https://developer.nvidia.com/isaac-gym-preview)
-All Installation instructions can be found on ~/isaacgym/docs/install.html
+For futher infromation, the official intalllation instructions could be found on ~/isaacgym/docs/install.html
 
 Open a terminal window 
 
@@ -39,7 +39,8 @@ cd examples
 python joint_monkey.py
 ```
 
-Now install IsaacGymEnvs for reinforcement learning examples and environment. 
+IsaacGymEnvs for reinforcement learning examples and environment should be automatically installed. 
+If that is not the case, install IsacGymEnvs:
 
 ```bash
 cd .. 
