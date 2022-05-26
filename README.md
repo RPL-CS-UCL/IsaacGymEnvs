@@ -42,6 +42,7 @@ cd examples
 python joint_monkey.py
 ```
 
+### MISC (Unknown use)
 Now install IsaacGymEnvs for reinforcement learning examples and environment. 
 
 ```bash
