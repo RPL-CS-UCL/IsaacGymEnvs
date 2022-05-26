@@ -34,7 +34,7 @@ Before running the setup.py the file has to be updated:
 Then run the setup.py script:
 ```bash
 #Correct directory 
-cd  ~/isaacgym/python/setup.py 
+cd  ~/isaacgym/python
 python setup.py
 
 #test installation
