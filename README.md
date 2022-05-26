@@ -35,7 +35,7 @@ Then run the setup.py script:
 ```bash
 #Correct directory 
 cd  ~/isaacgym/python
-python setup.py
+python setup.py install
 
 #test installation
 cd examples
