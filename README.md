@@ -9,7 +9,7 @@ First the Isaac Gym Preview needs to be downloaded using the following link:
 -[Isaac Gym Preview](https://developer.nvidia.com/isaac-gym-preview)
 
 ### Original Installation
-All Installation instructions can be found on ~/isaacgym/docs/install.html
+For further information, all official installation instructions can be found on ~/isaacgym/docs/install.html
 
 ### Anaconda Installation
 Open a terminal window 
