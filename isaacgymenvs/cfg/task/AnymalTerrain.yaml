@@ -82,8 +82,8 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1_unitree.urdf"
-    footName: "calf" 
-    kneeName: "thigh"
+    footName: "foot"
+    kneeName: "calf"
     hipName: "hip"
     collapseFixedJoints: true
     fixBaseLink: false

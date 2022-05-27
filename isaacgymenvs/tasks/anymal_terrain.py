@@ -315,19 +315,15 @@ class AnymalTerrain(VecTask):
 
         foot_name = self.cfg["env"]["urdfAsset"]["footName"]
         knee_name = self.cfg["env"]["urdfAsset"]["kneeName"]
+        hip_name = self.cfg["env"]["urdfAsset"]["hipName"]
 
-        # Not necessary code (Rokas edit)
-        #hip_name = self.cfg["env"]["urdfAsset"]["hipName"]
 
         feet_names = [s for s in body_names if foot_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         knee_names = [s for s in body_names if knee_name in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
-
-        # Not necessary code (Rokas edit)
-        #hip_names = [s for s in self.dof_names if hip_name in s]
-        #self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
-    
+        hip_names = [s for s in self.dof_names if hip_name in s]
+        self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
 
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
@@ -367,10 +363,8 @@ class AnymalTerrain(VecTask):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], feet_names[i])
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], knee_names[i])
-        
-        # Not necessary code (Rokas edit)
-        #for i in range(len(hip_names)):
-            #self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
+        for i in range(len(hip_names)):
+            self.hip_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
 
         self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
 
@@ -430,32 +424,40 @@ class AnymalTerrain(VecTask):
         rew_joint_acc = torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1) * self.rew_scales["joint_acc"]
 
         ### Reward: Base height Penalty
-        rew_base_height = torch.square(self.root_states[:, 2] -  self.target_height) * self.rew_scales["base_height"] # TODO add target base height to cfg
+        rew_base_height = torch.square(self.root_states[:, 2] -  self.target_height) * self.rew_scales["base_height"]
 
-        #print(self.torques)
-       
-        '''
-        ### Reward: Action Rate  Penalty
-        rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
-
-        ################################################# Mania rewards #############################################################################################
+        ### Reward: Air Time Reward
+        self.feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) > 1.
+        first_contact = (self.feet_air_time > 0.) * self.feet_contacts
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) * self.rew_scales[
+            "air_time"]  # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1  # no reward for zero command
+        self.feet_air_time *= ~self.feet_contacts
 
         ### Reward: Knee Contact
         # contact_forces[num_envs(4096), num_bodies(18), 3 (x,y,z)]
-        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1. #Bool [num_envs,num_indices] - [4096,4]
+        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=-1) > 0.
         rew_knee_collision = torch.sum(knee_contact, dim=1) * self.rew_scales["knee_collision"]
+        #
+        # ### Reward: Flip Contact State
+        # flip_contacts = self.flip(self.feet_contacts)
+        # rew_foot_contact = torch.sum(flip_contacts, dim=1) * self.rew_scales["foot_contact"]
 
-        ### Reward: Flip Contact State
-        feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1.
-        flip_contacts = self.flip(feet_contacts)
-        rew_foot_contact = torch.sum(flip_contacts, dim=1) * self.rew_scales["foot_contact"]
 
-        ### Reward: Air Time Reward
-        first_contact = (self.feet_air_time > 0.) * feet_contacts
-        self.feet_air_time += self.dt
-        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) * self.rew_scales["air_time"] # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
-        self.feet_air_time *= ~feet_contacts
+        ### Reward: Hip
+
+
+        rew_hip = torch.sum(torch.abs( self.default_dof_pos[:, self.hip_indices] - self.dof_pos[:, self.hip_indices] ), dim=1) * \
+                  self.rew_scales["hip"]
+
+
+        ## Reward: Action Rate  Penalty
+        #rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
+
+        ################################################# Mania rewards #############################################################################################
+        '''
+
 
         ### Reward: Hip
         rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
@@ -492,10 +494,8 @@ class AnymalTerrain(VecTask):
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc 
+            rew_torque + rew_joint_acc + rew_airTime  + rew_hip + rew_knee_collision
 
-        # Not necessary code (Rokas edit)
-        #self.rew_buf = torch.clip(rew_buf, min=None, max=None)
 
         # add termination reward
         self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
@@ -508,13 +508,13 @@ class AnymalTerrain(VecTask):
         self.episode_sums["orient"] += rew_orient
         self.episode_sums["torques"] += rew_torque
         self.episode_sums["joint_acc"] += rew_joint_acc
-        #self.episode_sums["knee_collision"] += rew_knee_collision
+        self.episode_sums["knee_collision"] += rew_knee_collision
         #self.episode_sums["action_rate"] += rew_action_rate
-        #self.episode_sums["air_time"] += rew_airTime
-        #self.episode_sums["base_height"] += rew_base_height
-        #self.episode_sums["hip"] += rew_hip
+        self.episode_sums["air_time"] += rew_airTime
+        self.episode_sums["base_height"] += rew_base_height
+        self.episode_sums["hip"] += rew_hip
         #self.episode_sums["gait"] += rew_gait
-        #self.episode_sums["foot_contact"] += rew_foot_contact
+        # self.episode_sums["foot_contact"] += rew_foot_contact
                                                 
     def reset_idx(self, env_ids):
         """ Reset some environments.
