@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
     "omegaconf",
     "hydra-core>=1.1",
     "rl-games==1.1.3",
+    "protobuf<=3.20.1",
 ]
 
 # Installation operation
@@ -36,4 +37,4 @@ setup(
     zip_safe=False,
 )
 
-# EOF
+
