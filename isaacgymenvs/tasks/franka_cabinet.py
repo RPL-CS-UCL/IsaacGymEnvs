@@ -278,7 +278,8 @@ class FrankaCabinet(VecTask):
                         prop_state_pose.p.y = drawer_pose.p.y + propy
                         prop_state_pose.p.z = drawer_pose.p.z + propz
                         prop_state_pose.r = gymapi.Quat(0, 0, 0, 1)
-                        prop_handle = self.gym.create_actor(env_ptr, prop_asset, prop_state_pose, "prop{}".format(prop_count), i, 0, 0)
+
+
                         prop_count += 1
 
                         prop_idx = j * props_per_row + k

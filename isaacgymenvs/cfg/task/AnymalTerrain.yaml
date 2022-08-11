@@ -10,9 +10,10 @@ env:
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
+  dt: 0.002
 
   terrain:
-    terrainType: plane # none, plane, or trimesh
+    terrainType: plane # none, plane, trimesh, paper
     staticFriction: 1.25  # [-]
     dynamicFriction: 0.9  # [-]
     restitution: 0.        # [-]
@@ -37,7 +38,6 @@ env:
     downsampled_scale: 0.2 #m
 
 
-
   baseInitState:
     pos: [0.0, 0.0, 0.35] # x,y,z [m]
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
@@ -47,9 +47,9 @@ env:
 
   randomCommandVelocityRanges:
     # train
-    linear_x: [-1., 1.] # min max [m/s]
-    linear_y: [-1., 1.]   # min max [m/s]
-    yaw: [-3.14, 3.14]    # min max [rad/s]
+    linear_x: [0.39, 0.41] # min max [m/s]
+    linear_y: [-0.000001, 0.000001]   # min max [m/s]
+    yaw: [-0.0000001, 0.0000001]    # min max [rad/s]
 
   control:
     # PD Drive parameters:
@@ -82,15 +82,15 @@ env:
 
   urdfAsset:
     file: "urdf/unitree_a1/urdf/a1_unitree.urdf"
-    footName: "foot"
-    kneeName: "calf"
+    footName: "calf" 
+    kneeName: "thigh"
     hipName: "hip"
     collapseFixedJoints: true
     fixBaseLink: false
     defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
-    allowKneeContacts: false
+    allowKneeContacts: true
     # rewards
     terminalReward: -0.0
     linearVelocityXYRewardScale: 1.1
@@ -105,10 +105,10 @@ env:
     kneeCollisionRewardScale: -0.25 
     feetStumbleRewardScale: -0.05 #-2.0
     actionRateRewardScale: -0.01
-    footcontactRewardScale: -0.05
+    footcontactRewardScale: -1
     gaitRewardScale: -0.1
     # cosmetics
-    hipRewardScale: -0.25 #25
+    hipRewardScale: -0.05
     #limits
     torque_limit: 30. #30
     target_height: 0.3

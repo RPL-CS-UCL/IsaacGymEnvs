@@ -113,7 +113,9 @@ def launch_rlg_hydra(cfg: DictConfig):
         'play': cfg.test,
     })
 
+
 if __name__ == "__main__":
     launch_rlg_hydra()
     from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter()
+    RLGPUAlgoObserver.after_print_stats()

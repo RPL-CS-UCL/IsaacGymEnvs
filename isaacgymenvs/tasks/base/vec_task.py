@@ -60,7 +60,7 @@ class Env(ABC):
 
         split_device = sim_device.split(":")
         self.device_type = split_device[0]
-        self.device_id = int(split_device[1]) if len(split_device) > 1 else 0
+        self.device_id = 0#int(split_device[1]) if len(split_device) > 1 else 0
 
         self.device = "cpu"
         if config["sim"]["use_gpu_pipeline"]:
@@ -72,9 +72,10 @@ class Env(ABC):
 
         self.rl_device = config.get("rl_device", "cuda:0")
 
+
         # Rendering
         # if training in a headless mode
-        self.headless = headless
+        self.headless =headless
 
         enable_camera_sensors = config.get("enableCameraSensors", False)
         self.graphics_device_id = graphics_device_id
@@ -320,9 +321,12 @@ class VecTask(Env):
         self.pre_physics_step(action_tensor)
 
         # step physics and render each frame
+
         for i in range(self.control_freq_inv):
             self.render()
             self.gym.simulate(self.sim)
+
+
 
         # to fix!
         if self.device == 'cpu':

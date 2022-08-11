@@ -98,7 +98,7 @@ class AnymalTerrain(VecTask):
         self.command_y_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_y"]
         self.command_yaw_range = self.cfg["env"]["randomCommandVelocityRanges"]["yaw"]
 
-        # base init state
+        #base init state
         pos = self.cfg["env"]["baseInitState"]["pos"]
         rot = self.cfg["env"]["baseInitState"]["rot"]
         v_lin = self.cfg["env"]["baseInitState"]["vLinear"]
@@ -114,7 +114,7 @@ class AnymalTerrain(VecTask):
 
         #episode length
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"] 
-        self.max_episode_length = int(self.max_episode_length_s/ self.dt + 0.5)
+        self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
 
         #push interval
         self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
@@ -132,6 +132,7 @@ class AnymalTerrain(VecTask):
 
         super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
 
+
         if self.graphics_device_id != -1:
             p = self.cfg["env"]["viewer"]["pos"]
             lookat = self.cfg["env"]["viewer"]["lookat"]
@@ -139,10 +140,13 @@ class AnymalTerrain(VecTask):
             cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
+        torch.cuda.empty_cache()
+
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim)
+        rb_state_tensor = self.gym.acquire_rigid_body_state_tensor(self.sim)
 
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
@@ -153,11 +157,15 @@ class AnymalTerrain(VecTask):
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
+        self.rb_state = gymtorch.wrap_tensor(rb_state_tensor)
+        self.rb_obj = self.rb_state.view(self.num_envs, self.num_bodies, 13)
+        self.rb_pos = self.rb_obj[:, :, :3]
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
         # initialize some data used later on
         self.common_step_counter = 0
         self.extras = {}
+        self.iteration_index = torch.zeros(self.num_envs, device=self.device)
         self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
         self.commands = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
         self.commands_scale = torch.tensor([self.lin_vel_scale, self.lin_vel_scale, self.ang_vel_scale], device=self.device, requires_grad=False,)
@@ -191,8 +199,32 @@ class AnymalTerrain(VecTask):
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(), "stumble": torch_zeros(),
                              "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros()}
 
-        self.reset_idx(torch.arange(self.num_envs, device=self.device))
         self.init_done = True
+
+        ########################################################## MPC DATA PROCESSING ################################################################
+
+        self.load_MPC_data()
+
+        self.velocities = torch.tensor([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]).cuda(0)
+        num_vel = len(self.velocities)
+
+        #make gait and footstep tensors
+        self.gaits = torch.tensor(np.array([self.ct_tp_01, self.ct_tp_02, self.ct_tp_03, self.ct_tp_04, self.ct_tp_05,self.ct_tt_06, self.ct_tt_07, self.ct_tt_07, self.ct_tt_09, self.ct_tt_10])).cuda(0)
+        self.foot = torch.tensor(np.array([self.f_tp_01[:,:,1], self.f_tp_02[:,:,1], self.f_tp_03[:,:,1], self.f_tp_04[:,:,1], self.f_tp_05[:,:,1],self.f_tt_06[:,:,1], self.f_tt_07[:,:,1], self.f_tt_08[:,:,1], self.f_tt_09[:,:,1], self.f_tt_10[:,:,1]])).cuda(0)
+        self.num_ts = len(self.ct_tp_01) #MPC TIME STEPS
+        self.gait = torch.zeros(self.num_envs, self.num_ts,4).cuda(0)
+
+
+        #select random velocity for each environemnt
+        self.ind = torch.randint(0, num_vel-1, (self.num_envs,)).cuda(0)
+
+        #randomly select the corresponding vel,gait,foootstep
+        self.commands[:, 0] = torch.index_select(self.velocities,0,self.ind)
+        self.gait = torch.index_select(self.gaits,0,self.ind)
+        self.footsteps = torch.index_select(self.foot,0,self.ind).cuda(0)
+
+        self.reset_idx(torch.arange(self.num_envs, device=self.device))
+
 
 
     def create_sim(self):
@@ -317,13 +349,20 @@ class AnymalTerrain(VecTask):
         knee_name = self.cfg["env"]["urdfAsset"]["kneeName"]
         hip_name = self.cfg["env"]["urdfAsset"]["hipName"]
 
+        # Not necessary code (Rokas edit)
+        #hip_name = self.cfg["env"]["urdfAsset"]["hipName"]
 
         feet_names = [s for s in body_names if foot_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         knee_names = [s for s in body_names if knee_name in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
-        hip_names = [s for s in self.dof_names if hip_name in s]
+        hip_names = [s for s in body_names if hip_name in s]
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
+
+        # Not necessary code (Rokas edit)
+        #hip_names = [s for s in self.dof_names if hip_name in s]
+        #self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
+    
 
         dof_props = self.gym.get_asset_dof_properties(anymal_asset)
         
@@ -340,6 +379,8 @@ class AnymalTerrain(VecTask):
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
         self.anymal_handles = []
         self.envs = []
+
+
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, num_per_row)
@@ -364,17 +405,22 @@ class AnymalTerrain(VecTask):
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], knee_names[i])
         for i in range(len(hip_names)):
-            self.hip_indices[i] = self.gym.find_actor_dof_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
+            self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
+
+        # Not necessary code (Rokas edit)
+        #for i in range(len(hip_names)):
+            #self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], hip_names[i])
 
         self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
+
 
     def check_termination(self):
         """ Check if environments need to be reset """
 
         self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim= -1) > 1. #reset if base index touches the ground
-        if not self.allow_knee_contacts:
-            knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
-            self.reset_buf |= torch.any(knee_contact, dim=1)
+        # if not self.allow_knee_contacts:
+        #     knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
+        #     self.reset_buf |= torch.any(knee_contact, dim=1)
 
         self.reset_buf = torch.where(self.timeout_buf.bool(), torch.ones_like(self.reset_buf), self.reset_buf)
     
@@ -391,9 +437,48 @@ class AnymalTerrain(VecTask):
                                     self.actions
                                     ),dim=-1)
 
-    def flip(self, is_cont):
-        """ flips contact forces """
-        return ~is_cont
+
+
+    def get_mpc_gait(self):
+        print(self.iteration_index)
+        test = self.iteration_index.expand(4, -1)
+        test = test.t()
+        test = test.to(torch.int64)
+        ttest1 = torch.unsqueeze(test, 1)
+
+        desired_mpc = torch.gather(self.gait, 1, ttest1.to(torch.int64))
+        desired_mpc = torch.squeeze(desired_mpc, 1)
+        return desired_mpc
+
+    def get_mpc_footstep(self):
+        #get footstep for each env and account for time index
+
+        test1 = self.iteration_index.expand(4, -1)
+        test1 = test1.t()
+        test1 = test1.to(torch.int64)
+        ttest2 = torch.unsqueeze(test1, 1)
+
+        # For Stance: CHECK INIT POSITION IN STANCE
+        # d_footsteps = self.desired_footsteps[:, 0, :, :]
+        # d_footsteps = torch.unsqueeze(d_footsteps, 1)
+        # d_footsteps = d_footsteps.expand(-1, 10000, -1, -1)
+        # self.desired_footsteps = d_footsteps
+
+        # desired_footstep = self.footsteps.reshape(self.num_envs, 10000, 12)
+        desired_footstep = torch.gather(self.footsteps, 1, ttest2.to(torch.int64))
+        desired_footstep = torch.squeeze(desired_footstep, 1)
+        # desired_footstep = desired_footstep.reshape(self.num_envs,4,3)
+        return desired_footstep
+
+    def distance_footstep(self, mpc, sim):
+  
+        sim = sim[:,:,1]
+        diff = mpc-sim
+        sqr = torch.square(diff)
+        d = torch.sqrt(sqr)
+        return d
+
+
 
     def compute_reward(self):
         """  Calls each reward term which had a non-zero scale and adds each terms to the episode sums and to the total reward
@@ -424,81 +509,43 @@ class AnymalTerrain(VecTask):
         rew_joint_acc = torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1) * self.rew_scales["joint_acc"]
 
         ### Reward: Base height Penalty
-        rew_base_height = torch.square(self.root_states[:, 2] -  self.target_height) * self.rew_scales["base_height"]
+        rew_base_height = torch.square(self.root_states[:, 2] -  self.target_height) * self.rew_scales["base_height"] # TODO add target base height to cfg
 
-        ### Reward: Air Time Reward
-        self.feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) > 1.
-        first_contact = (self.feet_air_time > 0.) * self.feet_contacts
-        self.feet_air_time += self.dt
-        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) * self.rew_scales[
-            "air_time"]  # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1  # no reward for zero command
-        self.feet_air_time *= ~self.feet_contacts
-
-        ### Reward: Knee Contact
-        # contact_forces[num_envs(4096), num_bodies(18), 3 (x,y,z)]
-        knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=-1) > 0.
-        rew_knee_collision = torch.sum(knee_contact, dim=1) * self.rew_scales["knee_collision"]
-        #
-        # ### Reward: Flip Contact State
-        # flip_contacts = self.flip(self.feet_contacts)
-        # rew_foot_contact = torch.sum(flip_contacts, dim=1) * self.rew_scales["foot_contact"]
-
-
-        ### Reward: Hip
-
-
-        rew_hip = torch.sum(torch.abs( self.default_dof_pos[:, self.hip_indices] - self.dof_pos[:, self.hip_indices] ), dim=1) * \
-                  self.rew_scales["hip"]
-
-
-        ## Reward: Action Rate  Penalty
-        #rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
-
-        ################################################# Mania rewards #############################################################################################
-        '''
-
-
-        ### Reward: Hip
-        rew_hip = torch.sum(torch.abs(self.dof_pos[:, [0, 3, 6, 9]] - self.default_dof_pos[:, [0, 3, 6, 9]]), dim=1)* self.rew_scales["hip"]
-
-        #################################################### ROKAS CHECK!!!!!!!!!!!!! #####################################################################
         ### Reward: Gait
+        # gait forces from  MPC
+        desired_mpc = self.get_mpc_gait()
+        # forces from sim
+        self.feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) > 1.
 
-        #Dictionary to store all joints (row vector [4096,1] )
-        joints = {
-            "FLH": self.dof_pos[:, 0],
-            "FLT": self.dof_pos[:, 1],
-            "FLC": self.dof_pos[:, 2],
-            "FRH": self.dof_pos[:, 3],
-            "FRT": self.dof_pos[:, 4],
-            "FRC": self.dof_pos[:, 5],
-            "RLH": self.dof_pos[:, 6],
-            "RLT": self.dof_pos[:, 7],
-            "RLC": self.dof_pos[:, 8],
-            "RRH": self.dof_pos[:, 9],
-            "RRT": self.dof_pos[:, 10],
-            "RRC": self.dof_pos[:, 11]
-        }
+        # make bool to int
+        desired_mpc = desired_mpc.long()
+        feet_contacts = self.feet_contacts.long()
 
-        RL = torch.stack((joints["RRT"], joints["RRC"], joints["RLT"], joints["RLC"]), 1) #Right leg [4096,4]
-        FL = torch.stack((joints["FLT"], joints["FLC"], joints["FRT"], joints["FRC"]), 1) #left leg [4096,4]
-        rew_gait = torch.sum(torch.abs(FL - RL), dim=1)
+        # difference between desired and sim
+        diff = torch.abs(desired_mpc - feet_contacts)
+        rew_gait = torch.sum(diff, dim=-1) * self.rew_scales["gait"]
 
-        
+        ## Reward: Footsteps
 
-        # total reward buffer
-        rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate + rew_hip + rew_knee_collision + rew_airTime+ rew_foot_contact +rew_gait
-        '''
+        #get mpc foootstep in right format
+        self.mpc_footsteps = self.get_mpc_footstep()
+        #getting only y coordinate
+        #get sim footsteps
+        self.foot_pos = self.rb_pos[:, self.feet_indices,:]
+        # get distance between footsteps:
+        self.distance = self.distance_footstep(self.mpc_footsteps,self.foot_pos)
+        rew_hip = torch.sum(self.distance, dim = -1 ) * self.rew_scales["hip"]
+
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_airTime  + rew_hip + rew_knee_collision
+            rew_torque + rew_joint_acc #+ rew_gait #+ rew_hip
 
+        # Not necessary code (Rokas edit)
+        #self.rew_buf = torch.clip(rew_buf, min=None, max=None)
 
         # add termination reward
-        self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
+        # self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
@@ -508,13 +555,13 @@ class AnymalTerrain(VecTask):
         self.episode_sums["orient"] += rew_orient
         self.episode_sums["torques"] += rew_torque
         self.episode_sums["joint_acc"] += rew_joint_acc
-        self.episode_sums["knee_collision"] += rew_knee_collision
+        #self.episode_sums["knee_collision"] += rew_knee_collision
         #self.episode_sums["action_rate"] += rew_action_rate
-        self.episode_sums["air_time"] += rew_airTime
-        self.episode_sums["base_height"] += rew_base_height
-        self.episode_sums["hip"] += rew_hip
-        #self.episode_sums["gait"] += rew_gait
-        # self.episode_sums["foot_contact"] += rew_foot_contact
+        #self.episode_sums["air_time"] += rew_airTime
+        #self.episode_sums["base_height"] += rew_base_height
+        #self.episode_sums["hip"] += rew_hip
+        self.episode_sums["gait"] += rew_gait
+        #self.episode_sums["foot_contact"] += rew_foot_contact
                                                 
     def reset_idx(self, env_ids):
         """ Reset some environments.
@@ -527,12 +574,9 @@ class AnymalTerrain(VecTask):
                 env_ids (list[int]): List of environment ids which must be reset
             """
 
-        # Not necessary code (Rokas edit)
-        positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
-        velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
 
-        #self.dof_pos[env_ids] = self.default_dof_pos[env_ids] * positions_offset
-        #self.dof_vel[env_ids] = velocities
+
+        self.iteration_index[env_ids] = 0
 
         ##############################################################################################
 
@@ -558,9 +602,14 @@ class AnymalTerrain(VecTask):
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
-        self.commands[env_ids, 0] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze()
-        self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze()
-        self.commands[env_ids, 3] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze()
+
+        #follow velocity even on reset
+        self.ind = torch.randint(0, 8, (len(env_ids),)).cuda(0)
+        self.commands[env_ids, 0] = torch.index_select(self.velocities,0,self.ind)
+        #self.gait = torch.index_select(self.gaits,0,self.ind)
+
+        self.commands[env_ids, 1] = 0
+        self.commands[env_ids, 3] = 0
         self.commands[env_ids] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.25).unsqueeze(1) # set small commands to zero
 
         self.last_actions[env_ids] = 0.
@@ -626,6 +675,7 @@ class AnymalTerrain(VecTask):
         self.progress_buf += 1
         self.randomize_buf += 1
         self.common_step_counter += 1
+        self.iteration_index += 1
 
         # Don't push the robot (Rokas edit)
         #if self.common_step_counter % self.push_interval == 0:
@@ -708,6 +758,63 @@ class AnymalTerrain(VecTask):
         heights = torch.min(heights1, heights2)
 
         return heights.view(self.num_envs, -1) * self.terrain.vertical_scale
+
+    def load_MPC_data(self):
+        # load data from MPC
+        path = "/home/maria/motion_imitation/"
+        with np.load(path + "footsteps_mpc.npz") as target_mpc:
+            self.target_mpc = target_mpc["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts.npz") as conatct_mpc:
+            self.contacts = conatct_mpc["feet_contacts"]
+
+        # load MPC gaits
+        ########### tripod
+        with np.load(path + "foot_contacts01tp.npz") as ct_tp_01:
+            self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts02tp.npz") as ct_tp_02:
+            self.ct_tp_02 = ct_tp_02["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts03tp.npz") as ct_tp_03:
+            self.ct_tp_03 = ct_tp_03["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts04tp.npz") as ct_tp_04:
+            self.ct_tp_04 = ct_tp_04["feet_contacts"]
+        with np.load(path + "foot_contacts05tp.npz") as ct_tp_05:
+            self.ct_tp_05 = ct_tp_05["feet_contacts"]
+
+        ########### trotting
+        with np.load(path + "foot_contacts06tt.npz") as ct_tt_06:
+            self.ct_tt_06 = ct_tt_06["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts07tt.npz") as ct_tt_07:
+            self.ct_tt_07 = ct_tt_07["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts08tt.npz") as ct_tt_08:
+            self.ct_tt_08 = ct_tt_08["feet_contacts"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "foot_contacts09tt.npz") as ct_tt_09:
+            self.ct_tt_09 = ct_tt_09["feet_contacts"]
+        with np.load(path + "foot_contacts10tt.npz") as ct_tt_10:
+            self.ct_tt_10 = ct_tt_10["feet_contacts"]
+
+        # load MPC footsteps
+        ########### trotting
+        with np.load(path + "footsteps_mpc01.npz") as f_tp_01:
+            self.f_tp_01 = f_tp_01["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc02tp.npz") as f_tp_02:
+            self.f_tp_02 = f_tp_02["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc03tp.npz") as f_tp_03:
+            self.f_tp_03 = f_tp_03["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc04tp.npz") as f_tp_04:
+            self.f_tp_04 = f_tp_04["footsteps"]
+        with np.load(path + "footsteps_mpc05tp.npz") as f_tp_05:
+            self.f_tp_05 = f_tp_05["footsteps"]
+
+        with np.load(path + "footsteps_mpc06tt.npz") as f_tt_06:
+            self.f_tt_06 = f_tt_06["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc07tt.npz") as f_tt_07:
+            self.f_tt_07 = f_tt_07["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc08tt.npz") as f_tt_08:
+            self.f_tt_08 = f_tt_08["footsteps"]  # [n_time_steps, feet indices, xyz]
+        with np.load(path + "footsteps_mpc09tt.npz") as f_tt_09:
+            self.f_tt_09 = f_tt_09["footsteps"]
+        with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
+            self.f_tt_10 = f_tt_10["footsteps"]
 
 
 # terrain generator
