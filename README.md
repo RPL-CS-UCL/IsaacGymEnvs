@@ -7,8 +7,11 @@
 ## Installation
 First the Isaac Gym Preview needs to be downloaded using the following link: 
 -[Isaac Gym Preview](https://developer.nvidia.com/isaac-gym-preview)
-All Installation instructions can be found on ~/isaacgym/docs/install.html
 
+### Original Installation
+For further information, all official installation instructions can be found on ~/isaacgym/docs/install.html
+
+### Anaconda Installation
 Open a terminal window 
 
 ```bash
@@ -31,14 +34,23 @@ Before running the setup.py the file has to be updated:
 Then run the setup.py script:
 ```bash
 #Correct directory 
-cd  ~/isaacgym/python/setup.py 
-python setup.py
-
-#test installation
-cd examples
-python joint_monkey.py
+cd  ~/isaacgym/python
+python setup.py install
 ```
 
+### Test Installation (TO FIX)
+for testing the installation download pycharm community version from here https://www.jetbrains.com/pycharm/
+after unzip the downloaded file you can start pycharm by openinng the bin folder and then executing from the terminal the command 
+```sh pycharm.sh
+```
+in pycharm you can create a new project to test your gym-env install. 
+create a new project and point to the ~/isaacgym/python/example folder as source folder and under "using an existing interpreter" select the ENVNAME anaconda enviroment previously created.
+After this, if you click the pointing down arrow near the execution button (a small green arrow in the top-right of the IDE) and then you click "create configuration" you will create a run/debug conf. In the new window that will appear shortly after, you have to create a new configuration by clicking on the little plus symbol on the top-left and then select python. 
+In the right half of the window you have to set the path to the executable (in this case select the joint_monkey.py file just for testing purpose) and now is required to add a new enviromental variable. On the "environment variable" line click on the small icon at the end of it. By doing so a new small window will appear and here you can add a new enviromental variable. The variable name is LD_LIBRARY_PATH and the variable value is ~/anaconda3/envs/ENVNAME/lib.
+Once the executable is created save it and now you will be able to run it from the main IDE interface by clicking on the small green arrow located in the top-right (before running it, check if the right executable is selected in the run/deubg dialog near the execution button!)
+
+
+### MISC (Unknown use)
 Now install IsaacGymEnvs for reinforcement learning examples and environment. 
 
 ```bash
