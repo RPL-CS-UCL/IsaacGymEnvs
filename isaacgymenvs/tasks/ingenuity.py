@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,15 +32,15 @@ import os
 import torch
 import xml.etree.ElementTree as ET
 
-from utils.torch_jit_utils import *
-from tasks.base.vec_task import VecTask
+from isaacgymenvs.utils.torch_jit_utils import *
+from .base.vec_task import VecTask
 
 from isaacgym import gymutil, gymtorch, gymapi
 
 
 class Ingenuity(VecTask):
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
         self.cfg = cfg
 
         self.max_episode_length = self.cfg["env"]["maxEpisodeLength"]
@@ -55,7 +55,7 @@ class Ingenuity(VecTask):
         # 4:6 - xyz force vector for upper rotor
         self.cfg["env"]["numActions"] = 6
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         dofs_per_env = 4
         bodies_per_env = 6

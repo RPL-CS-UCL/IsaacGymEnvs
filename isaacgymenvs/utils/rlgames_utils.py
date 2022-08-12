@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,15 +29,17 @@
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import AlgoObserver
 from rl_games.algos_torch import torch_ext
+from isaacgymenvs.utils.utils import set_seed
 import torch
 import numpy as np
 from typing import Callable
 
-from tasks import isaacgym_task_map
+from isaacgymenvs.tasks import isaacgym_task_map
 
 
 def get_rlgames_env_creator(
         # used to create the vec task
+        seed: int,
         task_config: dict,
         task_name: str,
         sim_device: str,
@@ -47,6 +49,8 @@ def get_rlgames_env_creator(
         # Used to handle multi-gpu case
         multi_gpu: bool = False,
         post_create_hook: Callable = None,
+        virtual_screen_capture: bool = False,
+        force_render: bool = False,
 ):
     """Parses the configuration parameters for the environment task and creates a VecTask
 
@@ -60,35 +64,25 @@ def get_rlgames_env_creator(
         multi_gpu: Whether to use multi gpu
         post_create_hook: Hooks to be called after environment creation.
             [Needed to setup WandB only for one of the RL Games instances when doing multiple GPUs]
+        virtual_screen_capture: Set to True to allow the users get captured screen in RGB array via `env.render(mode='rgb_array')`. 
+        force_render: Set to True to always force rendering in the steps (if the `control_freq_inv` is greater than 1 we suggest stting this arg to True)
     Returns:
         A VecTaskPython object.
     """
-    def create_rlgpu_env(_sim_device=sim_device, _rl_device=rl_device, **kwargs):
+    def create_rlgpu_env():
         """
         Creates the task from configurations and wraps it using RL-games wrappers if required.
         """
 
-        if multi_gpu:
-            import horovod.torch as hvd
-
-            rank = hvd.rank()
-            print("Horovod rank: ", rank)
-
-            _sim_device = f'cuda:{rank}'
-            _rl_device = f'cuda:{rank}'
-
-            task_config['rank'] = rank
-            task_config['rl_device'] = 'cuda:' + str(rank)
-        else:
-            _sim_device = sim_device
-            _rl_device = rl_device
-
         # create native task and pass custom config
         env = isaacgym_task_map[task_name](
             cfg=task_config,
-            sim_device=_sim_device,
+            rl_device=rl_device,
+            sim_device=sim_device,
             graphics_device_id=graphics_device_id,
-            headless=headless
+            headless=headless,
+            virtual_screen_capture=virtual_screen_capture,
+            force_render=force_render,
         )
 
         if post_create_hook is not None:
@@ -158,11 +152,14 @@ class RLGPUEnv(vecenv.IVecEnv):
     def __init__(self, config_name, num_actors, **kwargs):
         self.env = env_configurations.configurations[config_name]['env_creator'](**kwargs)
 
-    def step(self, action):
-        return  self.env.step(action)
+    def step(self, actions):
+        return  self.env.step(actions)
 
     def reset(self):
         return self.env.reset()
+    
+    def reset_done(self):
+        return self.env.reset_done()
 
     def get_number_of_agents(self):
         return self.env.get_number_of_agents()
@@ -171,6 +168,8 @@ class RLGPUEnv(vecenv.IVecEnv):
         info = {}
         info['action_space'] = self.env.action_space
         info['observation_space'] = self.env.observation_space
+        if hasattr(self.env, "amp_observation_space"):
+            info['amp_observation_space'] = self.env.amp_observation_space
 
         if self.env.num_states > 0:
             info['state_space'] = self.env.state_space

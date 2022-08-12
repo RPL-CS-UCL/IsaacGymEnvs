@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,12 +35,12 @@ from isaacgym import gymapi
 from isaacgym.torch_utils import *
 
 from isaacgymenvs.utils.torch_jit_utils import *
-from .base.vec_task import VecTask
+from isaacgymenvs.tasks.base.vec_task import VecTask
 
 
 class Humanoid(VecTask):
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
         self.cfg = cfg
         
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -67,7 +67,7 @@ class Humanoid(VecTask):
         self.cfg["env"]["numObservations"] = 108
         self.cfg["env"]["numActions"] = 21
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         if self.viewer != None:
             cam_pos = gymapi.Vec3(50.0, 25.0, 2.4)
@@ -117,7 +117,7 @@ class Humanoid(VecTask):
         self.prev_potentials = self.potentials.clone()
 
     def create_sim(self):
-        self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
+        self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
 
         self._create_ground_plane()

@@ -12,6 +12,22 @@ training progress.
 List of Examples
 ----------------
 
+* [Ant](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#ant-antpy)
+* [Humanoid](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#humanoid-humanoidpy)
+* [Shadow Hand](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#shadow-hand-object-manipulation-shadow_handpy)
+* [Allegro Hand](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#allegro-hand-allegro_handpy)
+* [ANYmal](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#anymal-anymalpy)
+* [ANYmal Rough Terrain](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#anymal-rough-terrain-anymal_terrainpy)
+* [TriFinger](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#trifinger-trifingerpy)
+* [NASA Ingenuity Helicopter](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#nasa-ingenuity-helicopter-ingenuitypy)
+* [Cartpole](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#cartpole-cartpolepy)
+* [Ball Balance](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#ball-balance-ball_balancepy)
+* [Franka Cabinet](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#franka-cabinet-franka_cabinetpy)
+* [Franka Cube Stack](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#franka-cube-stack-franka_cube_stackpy)
+* [Quadcopter](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#quadcopter-quadcopterpy)
+* [Adversarial Motion Priors](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#amp-adversarial-motion-priors-humanoidamppy)
+* [Factory](https://gitlab-master.nvidia.com/carbon-gym/isaacgymenvs/-/blob/dev/docs/rl_examples.md#factory-fast-contact-for-robotic-assembly)
+
 ### Ant [ant.py](../isaacgymenvs/tasks/ant.py)
 
 An example of a simple locomotion task, the goal is to train quadruped
@@ -283,6 +299,20 @@ Config files used for this task are:
 
 ![image](images/rl_franka.png)
 
+### Franka Cube Stack [franka_cube_stack.py](../isaacgymenvs/tasks/franka_cube_stack.py)
+
+The Franka Cube Stack example shows solving a cube stack task using either operational space control (OSC) or joint space torque control.
+OSC control provides an example of using direct GPU mass-matrix access API.
+
+It can be launched with command line argument `task=FrankaCubeStack`.
+
+Config files used for this task are:
+
+-   **Task config**: [FrankaCubeStack.yaml](../isaacgymenvs/cfg/task/FrankaCubeStack.yaml)
+-   **rl_games training config**: [FrankaCubeStackPPO.yaml](../isaacgymenvs/cfg/train/FrankaCubeStackPPO.yaml)
+
+![image](images/rl_franka_cube_stack.png)
+
 ### Quadcopter [quadcopter.py](../isaacgymenvs/tasks/quadcopter.py)
 
 This example trains a very simple quadcopter model to reach and hover near a fixed position.  The quadcopter model is generated procedurally and doesn't actually include any rotating blades.  Lift is achieved by applying thrust forces to the "rotor" bodies, which are modeled as flat cylinders.  This is a good example of using LOCAL_SPACE forces.  In addition to thrust, the pitch and roll of each rotor is controlled using DOF position targets.
@@ -295,3 +325,90 @@ Config files used for this task are:
 -   **rl_games training config**: [QuadcopterPPO.yaml](../isaacgymenvs/cfg/train/QuadcopterPPO.yaml)
 
 ![image](images/rl_quadcopter.png)
+
+
+### AMP: Adversarial Motion Priors [HumanoidAMP.py](../isaacgymenvs/tasks/humanoid_amp.py)
+
+This example trains a simulated human model to imitate different pre-recorded human animations stored in the mocap data - walking, running and backflip.
+
+It can be launched with command line argument `task=HumanoidAMP`. The Animation file to train with can be set with `motion_file` in the task config (also see below for more information). Note: in test mode the viewer camera follows the humanoid from the first env. This can be changed in the environment yaml config by setting `cameraFollow=False`, or on the command line with a hydra override as follows: `++task.env.cameraFollow=False
+
+A few motions from the CMU motion capture library (http://mocap.cs.cmu.edu/) are included with this repository, but additional animations can be converted from FBX into a trainable format using the poselib `fbx_importer.py`. You can learn more about poselib and this conversion tool in `isaacgymenvs/tasks/amp/poselib/README.md`
+
+Several animations from the SFU Motion Capture Database (https://mocap.cs.sfu.ca/) are known to train well, including ones for martial arts moves such as a spin-kick, walking, jogging, and running animations, and several dance captures. The spinning kick portion of the SFU 0017_WushuKicks001 (shown below) trains in 6 minutes on a GA100 GPU. The SFU motions are not included directly in this repository due to licensing restrictions.
+
+Config files used for this task are:
+
+-   **Task config**: [HumanoidAMP.yaml](../isaacgymenvs/cfg/task/HumanoidAMP.yaml)
+-   **rl_games training config**: [HumanoidAMPPPO.yaml](../isaacgymenvs/cfg/train/HumanoidPPOAMP.yaml)
+-   **mocap data**: [motions](../assets/amp/motions)
+
+**Note** When training using new motion clips, the single most important hyperparameter to tune for AMP is `disc_grad_penalty` in `HumanoidAMPPPO.yaml`. Typical values are between [0.1, 10]. For a new motion, start with large values first, and if the policy is not able to closely imitate the motion, then try smaller coefficients for the gradient penalty. The `HumanoidAMPPPOLowGP.yaml` training configuration is provided as a convenience for this purpose.
+
+Use the following command lines for training the currently included AMP motions:  
+(Walk is the default config motion, so doesn't need the motion file specified)  
+`python train.py task=HumanoidAMP experiment=AMP_walk`  
+`python train.py task=HumanoidAMP ++task.env.motion_file=amp_humanoid_run.npy experiment=AMP_run`  
+`python train.py task=HumanoidAMP ++task.env.motion_file=amp_humanoid_dance.npy experiment=AMP_dance`
+
+(Backflip and Hop require the LowGP training config)  
+`python train.py task=HumanoidAMP train=HumanoidAMPPPOLowGP ++task.env.motion_file=amp_humanoid_backflip.npy experiment=AMP_backflip`  
+`python train.py task=HumanoidAMP train=HumanoidAMPPPOLowGP ++task.env.motion_file=amp_humanoid_hop.npy experiment=AMP_hop`  
+
+(Cartwheel requires hands in the contact body list and the LowGP training config; the default motion for the HumanoidAMPHands task is Cartwheel)
+`python train.py task=HumanoidAMPHands train=HumanoidAMPPPOLowGP experiment=AMP_cartwheel`
+
+**Note** If you use the AMP: Adversarial Motion Priors environment in your work, please ensure you cite the following work:
+```
+@article{
+	2021-TOG-AMP,
+	author = {Peng, Xue Bin and Ma, Ze and Abbeel, Pieter and Levine, Sergey and Kanazawa, Angjoo},
+	title = {AMP: Adversarial Motion Priors for Stylized Physics-Based Character Control},
+	journal = {ACM Trans. Graph.},
+	issue_date = {August 2021},
+	volume = {40},
+	number = {4},
+	month = jul,
+	year = {2021},
+	articleno = {1},
+	numpages = {15},
+	url = {http://doi.acm.org/10.1145/3450626.3459670},
+	doi = {10.1145/3450626.3459670},
+	publisher = {ACM},
+	address = {New York, NY, USA},
+	keywords = {motion control, physics-based character animation, reinforcement learning},
+} 
+```
+
+Images below are from SFU SpinKick training.
+![image](images/amp_spinkick.png)
+
+### Factory: Fast Contact for Robotic Assembly
+There are 5 Factory example tasks: **FactoryTaskNutBoltPick**, **FactoryTaskNutBoltPlace**, **FactoryTaskNutBoltScrew**, **FactoryTaskNutBoltInsertion**, and **FactoryTaskNutBoltGears**. Like the other tasks, they can be executed with `python train.py task=<task_name>`. The first time you run these examples, it may take some time for Gym to generate SDFs for the assets. However, these SDFs will then be cached.
+
+**FactoryTaskNutBoltPick**, **FactoryTaskNutBoltPlace**, and **FactoryTaskNutBoltScrew** train policies for the Pick, Place, and Screw tasks. They are simplified versions of the corresponding tasks in the Factory paper (e.g., smaller randomization ranges, simpler reward formulations, etc.) The Pick and Place subpolicies may take ~1 hour to achieve high success rates on a modern GPU, and the Screw subpolicy, which does not include initial state randomization, should achieve high success rates almost immediately.
+
+**FactoryTaskNutBoltInsertion** and **FactoryTaskNutBoltGears** do not train RL policies by default, as successfully training these policies is an open area of research. Their associated scripts ([factory_task_insertion.py](../isaacgymenvs/tasks/factory/factory_task_insertion.py) and [factory_task_gears.py](../isaacgymenvs/tasks/factory/factory_task_gears.py)) provide templates for users to write their own RL code. For an example of a filled-out template, see the script for **FactoryTaskNutBoltPick** ([factory_task_nut_bolt_pick.py](../isaacgymenvs/tasks/factory/factory_task_nut_bolt_pick.py)).
+
+The general configuration files for the above tasks are [FactoryTaskNutBoltPick.yaml](../isaacgymenvs/cfg/task/FactoryTaskNutBoltPick.yaml), [FactoryTaskNutBoltPlace.yaml](../isaacgymenvs/cfg/task/FactoryTaskNutBoltPlace.yaml), [FactoryTaskNutBoltScrew.yaml](../isaacgymenvs/cfg/task/FactoryTaskNutBoltScrew.yaml), [FactoryTaskInsertion.yaml](../isaacgymenvs/cfg/task/FactoryTaskInsertion.yaml), and [FactoryTaskGears.yaml](../isaacgymenvs/cfg/task/FactoryTaskGears.yaml). Note that you can select low-level controller types (e.g., joint-space IK, task-space impedance) within these configuration files.
+
+The training configuration files for the above tasks are [FactoryTaskNutBoltPickPPO.yaml](../isaacgymenvs/cfg/train/FactoryTaskNutBoltPickPPO.yaml), [FactoryTaskNutBoltPlacePPO.yaml](../isaacgymenvs/cfg/train/FactoryTaskNutBoltPlacePPO.yaml), [FactoryTaskNutBoltScrewPPO.yaml](../isaacgymenvs/cfg/train/FactoryTaskNutBoltScrewPPO.yaml), [FactoryTaskInsertionPPO.yaml](../isaacgymenvs/cfg/train/FactoryTaskInsertionPPO.yaml), and [FactoryTaskGearsPPO.yaml](../isaacgymenvs/cfg/train/FactoryTaskGearsPPO.yaml). We use the [rl-games](https://github.com/Denys88/rl_games) library to train our RL agents via PPO, and these configuration files define the PPO parameters.
+
+We highly recommend reading the [extended documentation](factory.md) for Factory, which will be regularly updated. This documentation includes details on SDF collisions, which all the Factory examples leverage. You can use SDF collisions for your own assets and environments.
+
+If you use the Factory simulation methods (e.g., SDF collisions, contact reduction) or Factory learning tools (e.g., assets, environments, or controllers) in your work, please cite the following paper:
+```
+@inproceedings{
+	narang2022factory,
+	author = {Yashraj Narang and Kier Storey and Iretiayo Akinola and Miles Macklin and Philipp Reist and Lukasz Wawrzyniak and Yunrong Guo and Adam Moravanszky and Gavriel State and Michelle Lu and Ankur Handa and Dieter Fox},
+	title = {Factory: Fast contact for robotic assembly},
+	booktitle = {Robotics: Science and Systems},
+	year = {2022}
+} 
+```
+
+Also note that our original formulations of SDF collisions and contact reduction were developed by [Macklin, et al.](https://dl.acm.org/doi/abs/10.1145/3384538) and [Moravanszky and Terdiman](https://scholar.google.com/scholar?q=Game+Programming+Gems+4%2C+chapter+Fast+Contact+Reduction+for+Dynamics+Simulation), respectively.
+
+![Nut_picking](https://user-images.githubusercontent.com/7465068/176542463-dd2d3980-c9d1-4b90-8fd2-7e23161905e9.gif)
+![Nut_placing](https://user-images.githubusercontent.com/7465068/176544020-ff6a56b6-7359-4580-b789-f9ba43e78459.gif)
+![Nut_screwing](https://user-images.githubusercontent.com/7465068/176528998-8a3dd41d-1a8f-4c1c-a6cd-f6eeb91ea87a.gif)

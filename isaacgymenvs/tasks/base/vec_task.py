@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,22 +33,32 @@ from gym import spaces
 
 from isaacgym import gymtorch, gymapi
 from isaacgym.torch_utils import to_torch
-from isaacgym.gymutil import get_property_setter_map, get_property_getter_map, get_default_setter_args, apply_random_samples, check_buckets, generate_random_samples
+from isaacgymenvs.utils.dr_utils import get_property_setter_map, get_property_getter_map, \
+    get_default_setter_args, apply_random_samples, check_buckets, generate_random_samples
 
 import torch
 import numpy as np
 import operator, random
 from copy import deepcopy
-
 import sys
 
 import abc
 from abc import ABC
 
+EXISTING_SIM = None
+SCREEN_CAPTURE_RESOLUTION = (1027, 768)
+
+def _create_sim_once(gym, *args, **kwargs):
+    global EXISTING_SIM
+    if EXISTING_SIM is not None:
+        return EXISTING_SIM
+    else:
+        EXISTING_SIM = gym.create_sim(*args, **kwargs)
+        return EXISTING_SIM
 
 
 class Env(ABC):
-    def __init__(self, config: Dict[str, Any], sim_device: str, graphics_device_id: int,  headless: bool):
+    def __init__(self, config: Dict[str, Any], rl_device: str, sim_device: str, graphics_device_id: int, headless: bool):
         """Initialise the env.
 
         Args:
@@ -70,7 +80,7 @@ class Env(ABC):
                 print("GPU Pipeline can only be used with GPU simulation. Forcing CPU Pipeline.")
                 config["sim"]["use_gpu_pipeline"] = False
 
-        self.rl_device = config.get("rl_device", "cuda:0")
+        self.rl_device = rl_device
 
         # Rendering
         # if training in a headless mode
@@ -119,6 +129,13 @@ class Env(ABC):
             Observation dictionary
         """
 
+    @abc.abstractmethod
+    def reset_idx(self, env_ids: torch.Tensor):
+        """Reset environments having the provided indices.
+        Args:
+            env_ids: environments to reset
+        """
+
     @property
     def observation_space(self) -> gym.Space:
         """Get the environment's observation space."""
@@ -147,7 +164,9 @@ class Env(ABC):
 
 class VecTask(Env):
 
-    def __init__(self, config, sim_device, graphics_device_id, headless):
+    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 24}
+
+    def __init__(self, config, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture: bool = False, force_render: bool = False):
         """Initialise the `VecTask`.
 
         Args:
@@ -155,8 +174,17 @@ class VecTask(Env):
             sim_device: the device to simulate physics on. eg. 'cuda:0' or 'cpu'
             graphics_device_id: the device ID to render with.
             headless: Set to False to disable viewer rendering.
+            virtual_screen_capture: Set to True to allow the users get captured screen in RGB array via `env.render(mode='rgb_array')`. 
+            force_render: Set to True to always force rendering in the steps (if the `control_freq_inv` is greater than 1 we suggest stting this arg to True)
         """
-        super().__init__(config, sim_device, graphics_device_id, headless)
+        super().__init__(config, rl_device, sim_device, graphics_device_id, headless)
+        self.virtual_screen_capture = virtual_screen_capture
+        self.virtual_display = None
+        if self.virtual_screen_capture:
+            from pyvirtualdisplay.smartdisplay import SmartDisplay
+            self.virtual_display = SmartDisplay(size=SCREEN_CAPTURE_RESOLUTION)
+            self.virtual_display.start()
+        self.force_render = force_render
 
         self.sim_params = self.__parse_sim_params(self.cfg["physics_engine"], self.cfg["sim"])
         if self.cfg["physics_engine"] == "physx":
@@ -248,24 +276,6 @@ class VecTask(Env):
             self.num_envs, device=self.device, dtype=torch.long)
         self.extras = {}
 
-    #
-    def set_sim_params_up_axis(self, sim_params: gymapi.SimParams, axis: str) -> int:
-        """Set gravity based on up axis and return axis index.
-
-        Args:
-            sim_params: sim params to modify the axis for.
-            axis: axis to set sim params for.
-        Returns:
-            axis index for up axis.
-        """
-        if axis == 'z':
-            sim_params.up_axis = gymapi.UP_AXIS_Z
-            sim_params.gravity.x = 0
-            sim_params.gravity.y = 0
-            sim_params.gravity.z = -9.81
-            return 2
-        return 1
-
     def create_sim(self, compute_device: int, graphics_device: int, physics_engine, sim_params: gymapi.SimParams):
         """Create an Isaac Gym sim object.
 
@@ -277,7 +287,7 @@ class VecTask(Env):
         Returns:
             the Isaac Gym sim object.
         """
-        sim = self.gym.create_sim(compute_device, graphics_device, physics_engine, sim_params)
+        sim = _create_sim_once(self.gym, compute_device, graphics_device, physics_engine, sim_params)
         if sim is None:
             print("*** Failed to create sim")
             quit()
@@ -285,7 +295,7 @@ class VecTask(Env):
         return sim
 
     def get_state(self):
-        """Returns the state buffer of the environment (the priviledged observations for asymmetric training)."""
+        """Returns the state buffer of the environment (the privileged observations for asymmetric training)."""
         return torch.clamp(self.states_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
 
     @abc.abstractmethod
@@ -320,18 +330,19 @@ class VecTask(Env):
 
         # step physics and render each frame
         for i in range(self.control_freq_inv):
-            self.render()
+            if self.force_render:
+                self.render()
             self.gym.simulate(self.sim)
 
         # to fix!
         if self.device == 'cpu':
             self.gym.fetch_results(self.sim, True)
 
-        # fill time out buffer
-        self.timeout_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.timeout_buf), torch.zeros_like(self.timeout_buf))
-        
         # compute observations, rewards, resets, ...
         self.post_physics_step()
+
+        # fill time out buffer: set to 1 if we reached the max episode length AND the reset buffer is 1. Timeout == 1 makes sense only if the reset buffer is 1.
+        self.timeout_buf = (self.progress_buf >= self.max_episode_length - 1) & (self.reset_buf != 0)
 
         # randomize observations
         if self.dr_randomizations.get('observations', None):
@@ -357,16 +368,18 @@ class VecTask(Env):
 
         return actions
 
-    def reset(self) -> torch.Tensor:
-        """Reset the environment.
+    def reset_idx(self, env_idx):
+        """Reset environment with indces in env_idx. 
+        Should be implemented in an environment class inherited from VecTask.
+        """  
+        pass
+
+    def reset(self):
+        """Is called only once when environment starts to provide the first observations.
+        Doesn't calculate observations. Actual reset and observation calculation need to be implemented by user.
         Returns:
             Observation dictionary
         """
-        zero_actions = self.zero_actions()
-
-        # step the simulator
-        self.step(zero_actions)
-
         self.obs_dict["obs"] = torch.clamp(self.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
 
         # asymmetric actor-critic
@@ -375,7 +388,24 @@ class VecTask(Env):
 
         return self.obs_dict
 
-    def render(self):
+    def reset_done(self):
+        """Reset the environment.
+        Returns:
+            Observation dictionary, indices of environments being reset
+        """
+        done_env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+        if len(done_env_ids) > 0:
+            self.reset_idx(done_env_ids)
+
+        self.obs_dict["obs"] = torch.clamp(self.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
+
+        # asymmetric actor-critic
+        if self.num_states > 0:
+            self.obs_dict["states"] = self.get_state()
+
+        return self.obs_dict, done_env_ids
+
+    def render(self, mode="rgb_array"):
         """Draw the frame to the viewer, and check for keyboard events."""
         if self.viewer:
             # check for window closed
@@ -404,6 +434,10 @@ class VecTask(Env):
 
             else:
                 self.gym.poll_viewer_events(self.viewer)
+
+            if self.virtual_display and mode == "rgb_array":
+                img = self.virtual_display.grab()
+                return np.array(img)
 
     def __parse_sim_params(self, physics_engine: str, config_sim: Dict[str, Any]) -> gymapi.SimParams:
         """Parse the config dictionary for physics stepping settings.
@@ -637,12 +671,26 @@ class VecTask(Env):
                     self.actor_params_generator.sample()
                 extern_offsets[env_id] = 0
 
+        # randomise all attributes of each actor (hand, cube etc..)
+        # actor_properties are (stiffness, damping etc..)
+
+        # Loop over actors, then loop over envs, then loop over their props 
+        # and lastly loop over the ranges of the params 
+
         for actor, actor_properties in dr_params["actor_params"].items():
+
+            # Loop over all envs as this part is not tensorised yet 
             for env_id in env_ids:
                 env = self.envs[env_id]
                 handle = self.gym.find_actor_handle(env, actor)
                 extern_sample = self.extern_actor_params[env_id]
 
+                # randomise dof_props, rigid_body, rigid_shape properties 
+                # all obtained from the YAML file
+                # EXAMPLE: prop name: dof_properties, rigid_body_properties, rigid_shape properties  
+                #          prop_attrs: 
+                #               {'damping': {'range': [0.3, 3.0], 'operation': 'scaling', 'distribution': 'loguniform'}
+                #               {'stiffness': {'range': [0.75, 1.5], 'operation': 'scaling', 'distribution': 'loguniform'}
                 for prop_name, prop_attrs in actor_properties.items():
                     if prop_name == 'color':
                         num_bodies = self.gym.get_actor_rigid_body_count(
@@ -651,6 +699,7 @@ class VecTask(Env):
                             self.gym.set_rigid_body_color(env, handle, n, gymapi.MESH_VISUAL,
                                                           gymapi.Vec3(random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)))
                         continue
+
                     if prop_name == 'scale':
                         setup_only = prop_attrs.get('setup_only', False)
                         if (setup_only and not self.sim_initialized) or not setup_only:
@@ -667,6 +716,7 @@ class VecTask(Env):
 
                     prop = param_getters_map[prop_name](env, handle)
                     set_random_properties = True
+
                     if isinstance(prop, list):
                         if self.first_randomization:
                             self.original_props[prop_name] = [

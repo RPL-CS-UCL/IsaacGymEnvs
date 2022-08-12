@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,14 +34,14 @@ from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
 
-from .base.vec_task import VecTask
+from isaacgymenvs.tasks.base.vec_task import VecTask
 
 from typing import Tuple, Dict
 
 
 class Anymal(VecTask):
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
 
         self.cfg = cfg
         
@@ -87,7 +87,7 @@ class Anymal(VecTask):
         self.cfg["env"]["numObservations"] = 48
         self.cfg["env"]["numActions"] = 12
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         # other
         self.dt = self.sim_params.dt
@@ -146,7 +146,7 @@ class Anymal(VecTask):
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
     def create_sim(self):
-        self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
+        self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self._create_ground_plane()
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
@@ -348,7 +348,7 @@ def compute_anymal_reward(
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
     reset = reset | torch.any(torch.norm(contact_forces[:, knee_indices, :], dim=2) > 1., dim=1)
-    time_out = episode_lengths > max_episode_length  # no terminal reward for time-outs
+    time_out = episode_lengths >= max_episode_length - 1  # no terminal reward for time-outs
     reset = reset | time_out
 
     return total_reward.detach(), reset

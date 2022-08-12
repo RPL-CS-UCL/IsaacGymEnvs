@@ -10,12 +10,12 @@ This repository contains example RL environments for the NVIDIA Isaac Gym high p
 
 ### Installation
 
-Download the Isaac Gym Preview 3 release from the [website](https://developer.nvidia.com/isaac-gym), then
+Download the Isaac Gym Preview 4 release from the [website](https://developer.nvidia.com/isaac-gym), then
 follow the installation instructions in the documentation. We highly recommend using a conda environment 
 to simplify set up.
 
 Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
-directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 3 
+directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 4
 install instructions if you have any trouble running the samples.
 
 Once Isaac Gym is installed and samples work within your current python environment, install this repo:
@@ -23,6 +23,33 @@ Once Isaac Gym is installed and samples work within your current python environm
 ```bash
 pip install -e .
 ```
+
+
+### Creating an environment
+
+We offer an easy-to-use API for creating preset vectorized environments. For more info on what an vectorized environment is and its usage, please refer to the Gym's [documentation](https://www.gymlibrary.ml/content/vector_api/).
+
+```python
+import isaacgym
+import isaacgymenvs
+import torch
+
+envs = isaacgymenvs.make(
+	seed=0, 
+	task="Ant", 
+	num_envs=2000, 
+	sim_device="cuda:0",
+	rl_device="cuda:0",
+)
+print("Observation space is", envs.observation_space)
+print("Action space is", envs.action_space)
+obs = envs.reset()
+for _ in range(20):
+	obs, reward, done, info = envs.step(
+		torch.rand((2000,)+envs.action_space.shape, device="cuda:0")
+	)
+```
+
 
 ### Running the benchmarks
 
@@ -93,7 +120,7 @@ Key arguments to the `train.py` script are:
 * `seed=SEED` - sets a seed value for randomizations, and overrides the default seed set up in the task config
 * `sim_device=SIM_DEVICE_TYPE` - Device used for physics simulation. Set to `cuda:0` (default) to use GPU and to `cpu` for CPU. Follows PyTorch-like device syntax.
 * `rl_device=RL_DEVICE` - Which device / ID to use for the RL algorithm. Defaults to `cuda:0`, and also follows PyTorch-like device syntax.
-* `graphics_device_id=GRAHPICS_DEVICE_ID` - Which Vulkan graphics device ID to use for rendering. Defaults to 0. **Note** - this may be different from CUDA device ID, and does **not** follow PyTorch-like device syntax.
+* `graphics_device_id=GRAPHICS_DEVICE_ID` - Which Vulkan graphics device ID to use for rendering. Defaults to 0. **Note** - this may be different from CUDA device ID, and does **not** follow PyTorch-like device syntax.
 * `pipeline=PIPELINE` - Which API pipeline to use. Defaults to `gpu`, can also set to `cpu`. When using the `gpu` pipeline, all data stays on the GPU and everything runs as fast as possible. When using the `cpu` pipeline, simulation can run on either CPU or GPU, depending on the `sim_device` setting, but a copy of the data is always made on the CPU at every step.
 * `test=TEST`- If set to `True`, only runs inference on the policy and does not do any training.
 * `checkpoint=CHECKPOINT_PATH` - Set to path to the checkpoint to load for training or testing.
@@ -134,6 +161,77 @@ RL policies. You can read more about it [here](docs/domain_randomization.md).
 
 If deterministic training of RL policies is important for your work, you may wish to review our [Reproducibility and Determinism Documentation](docs/reproducibility.md).
 
+## Multi-GPU Training
+
+You can run multi-GPU training on NGC using `torchrun` (i.e., `torch.distributed`) using this repository.
+
+Here is an example command for how to run in this way -
+`torchrun --standalone --nnodes=1 --nproc_per_node=2 train.py multi_gpu=True task=Ant <OTHER_ARGS>`
+
+Where the `--nproc_per_node=` flag specifies how many processes to run and note the `multi_gpu=True` flag must be set on the train script in order for multi-GPU training to run.
+
+## WandB support
+
+You can run [WandB](https://wandb.ai/) with Isaac Gym Envs by setting `wandb_activate=True` flag from the command line. You can set the group, name, entity, and project for the run by setting the `wandb_group`, `wandb_name`, `wandb_entity` and `wandb_project` set. Make sure you have WandB installed with `pip install wandb` before activating.
+
+
+## Capture videos
+
+
+We implement the standard `env.render(mode='rgb_rray')` `gym` API to provide an image of the simulator viewer. Additionally, we can leverage `gym.wrappers.RecordVideo` to help record videos that shows agent's gameplay. Consider running the following file which should produce a video in the `videos` folder.
+
+```python
+import gym
+import isaacgym
+import isaacgymenvs
+import torch
+
+envs = isaacgymenvs.make(
+	seed=0, 
+	task="Ant", 
+	num_envs=20, 
+	sim_device="cuda:0",
+	rl_device="cuda:0",
+	graphics_device_id=0,
+	headless=False,
+	multi_gpu=False,
+	virtual_screen_capture=True,
+	force_render=False,
+)
+envs.is_vector_env = True
+envs = gym.wrappers.RecordVideo(
+	envs,
+	"./videos",
+	step_trigger=lambda step: step % 10000 == 0, # record the videos every 10000 steps
+	video_length=100  # for each video record up to 100 steps
+)
+envs.reset()
+print("the image of Isaac Gym viewer is an array of shape", envs.render(mode="rgb_array").shape)
+for _ in range(100):
+	envs.step(
+		torch.rand((20,)+envs.action_space.shape, device="cuda:0")
+	)
+```
+
+## Capture videos during training
+
+You can automatically capture the videos of the agents gameplay by toggling the `capture_video=True` flag and tune the capture frequency `capture_video_freq=1500` and video length via `capture_video_len=100`. You can set `force_render=False` to disable rendering when the videos are not captured.
+
+```
+python train.py capture_video=True capture_video_freq=1500 capture_video_len=100 force_render=False
+```
+
+You can also automatically upload the videos to Weights and Biases:
+
+```
+python train.py task=Ant wandb_activate=True wandb_entity=nvidia wandb_project=rl_games capture_video=True force_render=False
+```
+
+## Pre-commit
+
+We use [pre-commit](https://pre-commit.com/) to helps us automate short tasks that improve code quality. Before making a commit to the repository, please ensure `pre-commit run --all-files` runs without error.
+
+
 ## Troubleshooting
 
 Please review the Isaac Gym installation instructions first if you run into any issues.
@@ -170,4 +268,37 @@ If you use the Trifinger environment in your work, please ensure you cite the fo
   year      = {2021},
   journal = {arXiv preprint arXiv:2108.09779}
 }
+```
+
+If you use the AMP: Adversarial Motion Priors environment in your work, please ensure you cite the following work:
+```
+@article{
+	2021-TOG-AMP,
+	author = {Peng, Xue Bin and Ma, Ze and Abbeel, Pieter and Levine, Sergey and Kanazawa, Angjoo},
+	title = {AMP: Adversarial Motion Priors for Stylized Physics-Based Character Control},
+	journal = {ACM Trans. Graph.},
+	issue_date = {August 2021},
+	volume = {40},
+	number = {4},
+	month = jul,
+	year = {2021},
+	articleno = {1},
+	numpages = {15},
+	url = {http://doi.acm.org/10.1145/3450626.3459670},
+	doi = {10.1145/3450626.3459670},
+	publisher = {ACM},
+	address = {New York, NY, USA},
+	keywords = {motion control, physics-based character animation, reinforcement learning},
+} 
+```
+
+If you use the Factory simulation methods (e.g., SDF collisions, contact reduction) or Factory learning tools (e.g., assets, environments, or controllers) in your work, please cite the following paper:
+```
+@inproceedings{
+	narang2022factory,
+	author = {Yashraj Narang and Kier Storey and Iretiayo Akinola and Miles Macklin and Philipp Reist and Lukasz Wawrzyniak and Yunrong Guo and Adam Moravanszky and Gavriel State and Michelle Lu and Ankur Handa and Dieter Fox},
+	title = {Factory: Fast contact for robotic assembly},
+	booktitle = {Robotics: Science and Systems},
+	year = {2022}
+} 
 ```

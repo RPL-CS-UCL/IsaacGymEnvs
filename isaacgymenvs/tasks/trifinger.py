@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@ project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 from isaacgymenvs.utils.torch_jit_utils import *
 from isaacgymenvs.tasks.base.vec_task import VecTask
+
 from types import SimpleNamespace
 from collections import deque
 from typing import Deque, Dict, Tuple, Union
@@ -89,7 +90,7 @@ class TrifingerDimensions(enum.Enum):
 # ################# #
 
 
-# readius of the area
+# radius of the area
 ARENA_RADIUS = 0.195
 
 
@@ -124,7 +125,7 @@ class CuboidalObject:
             self._size = (size, size, size)
         else:
             self._size = size
-        # compute remaning attributes
+        # compute remaining attributes
         self.__compute()
 
     """
@@ -320,7 +321,7 @@ class Trifinger(VecTask):
     }
     action_dim = _dims.JointTorqueDim.value
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
         self.cfg = cfg
 
         self.obs_spec = {
@@ -373,7 +374,7 @@ class Trifinger(VecTask):
                                 f'finger_middle_to_lower_joint_{finger_pos}']
         self._robot_dof_indices = OrderedDict.fromkeys(robot_dof_names, None)
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         if self.viewer != None:
             cam_pos = gymapi.Vec3(0.7, 0.0, 0.7)
@@ -463,7 +464,7 @@ class Trifinger(VecTask):
         self.__configure_mdp_spaces()
 
     def create_sim(self):
-        self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
+        self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
 
         self._create_ground_plane()
@@ -840,7 +841,7 @@ class Trifinger(VecTask):
              - "none" means that robot is configuration is not reset between episodes.
 
         Args:
-            instances: A tensor contraining indices of environment instances to reset.
+            instances: A tensor constraining indices of environment instances to reset.
             distribution: Name of distribution to sample initial state from: ['default', 'random']
             dof_pos_stddev: Noise scale to DOF position (used if 'type' is 'random')
             dof_vel_stddev: Noise scale to DOF velocity (used if 'type' is 'random')
@@ -887,7 +888,7 @@ class Trifinger(VecTask):
              - "none" means no resetting of object pose between episodes.
 
         Args:
-            instances: A tensor contraining indices of environment instances to reset.
+            instances: A tensor constraining indices of environment instances to reset.
             distribution: Name of distribution to sample initial state from: ['default', 'random']
         """
         # number of samples to generate
@@ -928,7 +929,7 @@ class Trifinger(VecTask):
         """Sample goal poses for the cube and sets them into the desired goal pose buffer.
 
         Args:
-            instances: A tensor contraining indices of environment instances to reset.
+            instances: A tensor constraining indices of environment instances to reset.
             difficulty: Difficulty level. The higher, the more difficult is the goal.
 
         Possible levels are:
@@ -1065,7 +1066,7 @@ class Trifinger(VecTask):
         """
         # Extract configuration for termination conditions
         termination_config = self.cfg["env"]["termination_conditions"]
-        # Termination condition - successful completition
+        # Termination condition - successful completion
         # Calculate distance between current object and goal
         object_goal_position_dist = torch.norm(
             self._object_goal_poses_buf[:, 0:3] - self._object_state_history[0][:, 0:3],

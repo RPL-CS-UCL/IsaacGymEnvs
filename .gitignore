@@ -1,3 +1,4 @@
+videos
 /isaacgymenvs/logs
 *train_dir*
 *ige_logs*
@@ -28,4 +29,5 @@ runs/
 .idea
 outputs/
 *.hydra*
+/isaacgymenvs/wandb
 *.code-workspace

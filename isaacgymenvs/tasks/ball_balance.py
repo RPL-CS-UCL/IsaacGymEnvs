@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ import xml.etree.ElementTree as ET
 
 from isaacgym import gymutil, gymtorch, gymapi
 from isaacgym.torch_utils import *
-from tasks.base.vec_task import VecTask
+from .base.vec_task import VecTask
 
 
 def _indent_xml(elem, level=0):
@@ -55,7 +55,7 @@ def _indent_xml(elem, level=0):
 
 class BallBalance(VecTask):
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
         self.cfg = cfg
 
         self.max_episode_length = self.cfg["env"]["maxEpisodeLength"]
@@ -81,7 +81,7 @@ class BallBalance(VecTask):
         # Actions: target velocities for the 3 actuated DOFs
         self.cfg["env"]["numActions"] = 3
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         self.root_tensor = self.gym.acquire_actor_root_state_tensor(self.sim)
         self.dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)

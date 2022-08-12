@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, NVIDIA Corporation
+# Copyright (c) 2018-2022, NVIDIA Corporation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,12 +35,12 @@ from isaacgym import gymapi
 from isaacgym.torch_utils import *
 
 from isaacgymenvs.utils.torch_jit_utils import *
-from .base.vec_task import VecTask
+from isaacgymenvs.tasks.base.vec_task import VecTask
 
 
 class ShadowHand(VecTask):
 
-    def __init__(self, cfg, sim_device, graphics_device_id, headless):
+    def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
 
         self.cfg = cfg
 
@@ -131,7 +131,7 @@ class ShadowHand(VecTask):
         self.cfg["env"]["numStates"] = num_states
         self.cfg["env"]["numActions"] = 20
 
-        super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
+        super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         self.dt = self.sim_params.dt
         control_freq_inv = self.cfg["env"].get("controlFrequencyInv", 1)
@@ -201,7 +201,7 @@ class ShadowHand(VecTask):
 
     def create_sim(self):
         self.dt = self.cfg["sim"]["dt"]
-        self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, self.up_axis)
+        self.up_axis_idx = 2 if self.up_axis == 'z' else 1 # index of up axis: Y=1, Z=2
 
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self._create_ground_plane()
@@ -464,7 +464,7 @@ class ShadowHand(VecTask):
         elif self.obs_type == "full_state":
             self.compute_full_state()
         else:
-            print("Unkown observations type!")
+            print("Unknown observations type!")
 
         if self.asymmetric_obs:
             self.compute_full_state(True)
@@ -776,7 +776,7 @@ def compute_hand_reward(
     # Success bonus: orientation is within `success_tolerance` of goal orientation
     reward = torch.where(goal_resets == 1, reward + reach_goal_bonus, reward)
 
-    # Fall penalty: distance to the goal is larger than a threashold
+    # Fall penalty: distance to the goal is larger than a threshold
     reward = torch.where(goal_dist >= fall_dist, reward + fall_penalty, reward)
 
     # Check env termination conditions, including maximum success number
@@ -785,11 +785,11 @@ def compute_hand_reward(
         # Reset progress buffer on goal envs if max_consecutive_successes > 0
         progress_buf = torch.where(torch.abs(rot_dist) <= success_tolerance, torch.zeros_like(progress_buf), progress_buf)
         resets = torch.where(successes >= max_consecutive_successes, torch.ones_like(resets), resets)
-    resets = torch.where(progress_buf >= max_episode_length, torch.ones_like(resets), resets)
+    resets = torch.where(progress_buf >= max_episode_length - 1, torch.ones_like(resets), resets)
 
     # Apply penalty for not reaching the goal
     if max_consecutive_successes > 0:
-        reward = torch.where(progress_buf >= max_episode_length, reward + 0.5 * fall_penalty, reward)
+        reward = torch.where(progress_buf >= max_episode_length - 1, reward + 0.5 * fall_penalty, reward)
 
     num_resets = torch.sum(resets)
     finished_cons_successes = torch.sum(successes * resets.float())
