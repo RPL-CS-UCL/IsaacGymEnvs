@@ -27,14 +27,14 @@ env:
   randomCommandVelocityRanges:
     linear_x: [-1., 1.] # min max [m/s]
     linear_y: [-1., 1.]   # min max [m/s]
-    yaw: [-3.14, 3.14]          # min max [rad/s]
+    yaw: [-1, 1]          # min max [rad/s]
 
   control:
     # PD Drive parameters:
-    driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
-    stiffness: 0  # [N*m/rad] 85.0
-    damping: 0     # [N*m*s/rad] 2.0
-    actionScale: 9.0
+    #driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
+    #stiffness: 85.0  # [N*m/rad] 85.0
+    #damping: 2.0     # [N*m*s/rad] 2.0
+    actionScale: 14.0
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
 
@@ -56,14 +56,13 @@ env:
     RL_calf_joint: -1.5   # [rad]
 
   urdfAsset:
-    collapseFixedJoints: True
+    collapseFixedJoints: False
     fixBaseLink: False
-    #defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
     allowKneeContacts: true
     # rewards
-    linearVelocityXYRewardScale: 1.1
+    linearVelocityXYRewardScale: 1.1 #1.1
     linearVelocityZRewardScale: -4.0
     angularVelocityXYRewardScale: -0.05
     angularVelocityZRewardScale: 1.0
@@ -99,7 +98,7 @@ env:
   enableCameraSensors: False
 
 sim:
-  dt: 0.005 #0.02
+  dt: 0.002 #0.02
   substeps: 1 #2
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
@@ -109,15 +108,15 @@ sim:
     solver_type: ${....solver_type}
     use_gpu: ${contains:"cuda",${....sim_device}} # set to False to run on CPU
     num_position_iterations: 4
-    num_velocity_iterations: 1
-    contact_offset: 0.02
+    num_velocity_iterations: 2 #1
+    contact_offset: 0.01 #0.02
     rest_offset: 0.0
-    bounce_threshold_velocity: 0.2
-    max_depenetration_velocity: 100.0
+    bounce_threshold_velocity: 0.5 #0.2
+    max_depenetration_velocity: 1.0 #100.0
     default_buffer_size_multiplier: 5.0
     max_gpu_contact_pairs: 8388608 # 8*1024*1024
     num_subscenes: ${....num_subscenes}
-    contact_collection: 1 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
+    contact_collection: 2 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
 task:
   randomize: True
