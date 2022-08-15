@@ -36,6 +36,7 @@ num_subscenes: 4 # Splits the simulation into N physics scenes and runs each one
 test: False
 # used to set checkpoint path
 checkpoint: ''
+#checkpoint: '/home/rokas/git/IsaacGymEnvs/runs/A1/nn/A1.pth'
 # set to True to use multi-gpu horovod training
 multi_gpu: False
 

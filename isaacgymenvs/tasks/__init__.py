@@ -29,6 +29,7 @@
 
 from .ant import Ant
 from .anymal import Anymal
+from .A1 import A1
 from .anymal_terrain import AnymalTerrain
 from .ball_balance import BallBalance
 from .cartpole import Cartpole 
@@ -51,6 +52,7 @@ from .trifinger import Trifinger
 isaacgym_task_map = {
     "AllegroHand": AllegroHand,
     "Ant": Ant,
+    "A1": A1,
     "Anymal": Anymal,
     "AnymalTerrain": AnymalTerrain,
     "BallBalance": BallBalance,
