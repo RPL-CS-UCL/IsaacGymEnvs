@@ -13,6 +13,7 @@ env:
   #clipObservations: 100.0
   clipActions: 30.0
 
+
   plane:
     staticFriction: 1.25  # [-]
     dynamicFriction: 0.9  # [-]
@@ -88,25 +89,27 @@ env:
     # episode length in seconds
     episodeLength_s: 20
 
+    #M: noise
+    addNoise: true
+    noiseLevel: 1.25 # scales other values
+    dofPositionNoise: 0.0005
+    dofVelocityNoise: 0.01
+    linearVelocityNoise: 0.1
+    angularVelocityNoise: 0.0001
+    gravityNoise: 0.00002
+    heightMeasurementNoise: 0.06
+
+    #M: Push Robot
+    pushRobots: false
+    pushInterval_s: 15
+
   # viewer cam:
   viewer:
     refEnv: 0
     pos: [0, 0, 4]  # [m]
     lookat: [1., 1, 3.3]  # [m]
 
-  #M: noise
-  addNoise: true
-  noiseLevel: 1.25 # scales other values
-  dofPositionNoise: 0.0005
-  dofVelocityNoise: 0.01
-  linearVelocityNoise: 0.1
-  angularVelocityNoise: 0.0001
-  gravityNoise: 0.00002
-  heightMeasurementNoise: 0.06
 
-  #M: Push Robot
-  pushRobots: false
-  pushInterval_s: 15
 
 
   # set to True if you use camera sensors in the environment

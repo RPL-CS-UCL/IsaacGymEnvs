@@ -97,7 +97,7 @@ class A1(VecTask):
         self.named_default_joint_angles = self.cfg["env"]["defaultJointAngles"]
 
         # M: push interval
-        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
+        # self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
 
 
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
@@ -174,33 +174,33 @@ class A1(VecTask):
 
         ############################### Mania Gaits #######################################
 
-        #Load MPC DATA
-        self.load_mpc_390()
-
-        #Velocity selection
-        self.velocities = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]).cuda(0)
-        num_vel = len(self.velocities)
-
-        #Gait MPC Tensor :
-        # self.gaits = torch.tensor(np.array([self.ct_tp_01, self.ct_tp_02, self.ct_tp_03, self.ct_tp_04,self.ct_tp_05, self.ct_tp_05, self.ct_tt_07, self.ct_tt_07, self.ct_tt_09, self.ct_tt_10])).cuda(0)
-        self.gaits = torch.tensor(np.array(
-            [self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06,
-             self.ct_tt_06, self.ct_tt_06, self.ct_tt_06])).cuda(0)
-
-        # MPC TIME STEPS
-        self.num_ts = len(self.ct_tt_06)
-
-        # Gait in right form
-        self.gait = torch.zeros(self.num_envs, self.num_ts, 4).cuda(0)
-
-        # select random velocity for each environemnt
-        self.ind = torch.randint(0, num_vel - 1, (self.num_envs,)).cuda(0)  # num_vel-1
-        #random vel
-        self.commands[:, 0] = torch.index_select(self.velocities, 0, self.ind)
-        # corresponding gait
-        self.gait = torch.index_select(self.gaits, 0, self.ind)
-
-        self.reset_idx(torch.arange(self.num_envs, device=self.device))
+        # #Load MPC DATA
+        # self.load_mpc_390()
+        #
+        # #Velocity selection
+        # self.velocities = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]).cuda(0)
+        # num_vel = len(self.velocities)
+        #
+        # #Gait MPC Tensor :
+        # # self.gaits = torch.tensor(np.array([self.ct_tp_01, self.ct_tp_02, self.ct_tp_03, self.ct_tp_04,self.ct_tp_05, self.ct_tp_05, self.ct_tt_07, self.ct_tt_07, self.ct_tt_09, self.ct_tt_10])).cuda(0)
+        # self.gaits = torch.tensor(np.array(
+        #     [self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06,
+        #      self.ct_tt_06, self.ct_tt_06, self.ct_tt_06])).cuda(0)
+        #
+        # # MPC TIME STEPS
+        # self.num_ts = len(self.ct_tt_06)
+        #
+        # # Gait in right form
+        # self.gait = torch.zeros(self.num_envs, self.num_ts, 4).cuda(0)
+        #
+        # # select random velocity for each environemnt
+        # self.ind = torch.randint(0, num_vel - 1, (self.num_envs,)).cuda(0)  # num_vel-1
+        # #random vel
+        # self.commands[:, 0] = torch.index_select(self.velocities, 0, self.ind)
+        # # corresponding gait
+        # self.gait = torch.index_select(self.gaits, 0, self.ind)
+        #
+        # self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
@@ -425,26 +425,25 @@ class A1(VecTask):
         rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
         #print(rew_foot_air_time)
 
-        ### Reward: Knee collision
-        rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
-
-        ### Reward: Action rate
-        rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
-
-        ### Reward: Foot contact
-        rew_foot_contact = self._get_foot_contact_reward() * self.rew_scales["foot_contact"]
-
-        ### Reward: Gait
-        rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
-
-        ### Reward: Hip
-        rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
-        #print(rew_hip[0])
+        # ### Reward: Knee collision
+        # rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
+        #
+        # ### Reward: Action rate
+        # rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
+        #
+        # ### Reward: Foot contact
+        # rew_foot_contact = self._get_foot_contact_reward() * self.rew_scales["foot_contact"]
+        #
+        # ### Reward: Gait
+        # rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
+        #
+        # ### Reward: Hip
+        # rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
+        # #print(rew_hip[0])
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-             rew_foot_air_time + rew_torque + rew_joint_acc + rew_knee_collision + rew_action_rate + rew_foot_contact +\
-            rew_gait + rew_hip
+              rew_torque + rew_joint_acc #+ rew_action_rate  + rew_foot_contact +rew_gait + rew_hip +rew_foot_air_time +rew_knee_collision
 
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
@@ -456,11 +455,11 @@ class A1(VecTask):
         self.episode_sums["joint_acc"] += rew_joint_acc
         self.episode_sums["base_height"] += rew_joint_acc
         self.episode_sums["air_time"] += rew_foot_air_time
-        self.episode_sums["knee_collision"] += rew_joint_acc
-        self.episode_sums["action_rate"] += rew_action_rate
-        self.episode_sums["foot_contact"] += rew_foot_contact
-        self.episode_sums["gait"] += rew_gait
-        self.episode_sums["hip"] += rew_hip
+        # self.episode_sums["knee_collision"] += rew_joint_acc
+        # self.episode_sums["action_rate"] += rew_action_rate
+        # self.episode_sums["foot_contact"] += rew_foot_contact
+        # self.episode_sums["gait"] += rew_gait
+        # self.episode_sums["hip"] += rew_hip
         self.episode_sums["rew_buf"] += self.rew_buf
 
     def compute_observations(self):
@@ -500,7 +499,7 @@ class A1(VecTask):
         self.feet_air_time[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.last_actions[env_ids] = 0.
-        self.stance_step_counter[env_ids] = 0.
+        # self.stance_step_counter[env_ids] = 0.
 
         # Register individual reward data for logging
         self.extras["episode"] = {}

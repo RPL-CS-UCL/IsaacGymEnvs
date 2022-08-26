@@ -20,12 +20,14 @@ env:
     maxInitMapLevel: 0
     mapLength: 8.
     mapWidth: 8.
-    numLevels: 10
-    numTerrains: 20
+    numLevels: 5
+    numTerrains: 2
     # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
     terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
     # tri mesh only:
-    slopeTreshold: 0.5
+    slopeTreshold: 0.7
+    ##### from other
+
 
   baseInitState:
     pos: [0.0, 0.0, 0.62] # x,y,z [m]
