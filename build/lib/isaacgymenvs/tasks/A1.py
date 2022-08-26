@@ -96,10 +96,6 @@ class A1(VecTask):
         # default joint positions
         self.named_default_joint_angles = self.cfg["env"]["defaultJointAngles"]
 
-        # M: push interval
-        self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
-
-
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
         # other
@@ -108,7 +104,8 @@ class A1(VecTask):
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"]
         self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
         self.allow_knee_contatcs = self.cfg["env"]["learn"]["allowKneeContacts"]
-
+        #self.Kp = self.cfg["env"]["control"]["stiffness"]
+        #self.Kd = self.cfg["env"]["control"]["damping"]
 
         for key in self.rew_scales.keys():
             self.rew_scales[key] *= self.dt
@@ -152,12 +149,6 @@ class A1(VecTask):
         self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
-        #M: Push Robot
-        self.common_step_counter = 0
-
-        #M: Noise Vector
-        self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
-
         self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
         for i in range(self.cfg["env"]["numActions"]):
             name = self.dof_names[i]
@@ -169,36 +160,7 @@ class A1(VecTask):
         self.episode_sums = {"lin_vel_xy": torch_zeros(), "lin_vel_z": torch_zeros(), "ang_vel_z": torch_zeros(),
                              "ang_vel_xy": torch_zeros(), "orient": torch_zeros(), "torques": torch_zeros(), "joint_acc": torch_zeros(),
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(),
-                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(), "rew_buf": torch_zeros()}
-
-
-        ############################### Mania Gaits #######################################
-
-        #Load MPC DATA
-        self.load_mpc_390()
-
-        #Velocity selection
-        self.velocities = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]).cuda(0)
-        num_vel = len(self.velocities)
-
-        #Gait MPC Tensor :
-        # self.gaits = torch.tensor(np.array([self.ct_tp_01, self.ct_tp_02, self.ct_tp_03, self.ct_tp_04,self.ct_tp_05, self.ct_tp_05, self.ct_tt_07, self.ct_tt_07, self.ct_tt_09, self.ct_tt_10])).cuda(0)
-        self.gaits = torch.tensor(np.array(
-            [self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06, self.ct_tt_06,
-             self.ct_tt_06, self.ct_tt_06, self.ct_tt_06])).cuda(0)
-
-        # MPC TIME STEPS
-        self.num_ts = len(self.ct_tt_06)
-
-        # Gait in right form
-        self.gait = torch.zeros(self.num_envs, self.num_ts, 4).cuda(0)
-
-        # select random velocity for each environemnt
-        self.ind = torch.randint(0, num_vel - 1, (self.num_envs,)).cuda(0)  # num_vel-1
-        #random vel
-        self.commands[:, 0] = torch.index_select(self.velocities, 0, self.ind)
-        # corresponding gait
-        self.gait = torch.index_select(self.gaits, 0, self.ind)
+                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros()}
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
@@ -206,37 +168,11 @@ class A1(VecTask):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         self._create_ground_plane()
-        self._create_ground_plane()
         self._create_envs(self.num_envs, self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
 
         # If randomizing, apply once immediately on startup before the fist sim step
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
-
-    #M: Added noise function
-    def _get_noise_scale_vec(self, cfg):
-        """ Sets a vector used to scale the noise added to the observations.
-             [NOTE]: Must be adapted when changing the observations structure
-
-         Args:
-             cfg (Dict): Environment config file
-
-         Returns:
-             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
-         """
-
-        noise_vec = torch.zeros_like(self.obs_buf[0])
-        self.add_noise = self.cfg["env"]["learn"]["addNoise"]
-        noise_level = self.cfg["env"]["learn"]["noiseLevel"]
-        noise_vec[:3] = self.cfg["env"]["learn"]["linearVelocityNoise"] * noise_level * self.lin_vel_scale
-        noise_vec[3:6] = self.cfg["env"]["learn"]["angularVelocityNoise"] * noise_level * self.ang_vel_scale
-        noise_vec[6:9] = self.cfg["env"]["learn"]["gravityNoise"] * noise_level
-        noise_vec[9:12] = 0.  # commands
-        noise_vec[12:24] = self.cfg["env"]["learn"]["dofPositionNoise"] * noise_level * self.dof_pos_scale
-        noise_vec[24:36] = self.cfg["env"]["learn"]["dofVelocityNoise"] * noise_level * self.dof_vel_scale
-        # noise_vec[36:176] = self.cfg["env"]["learn"]["heightMeasurementNoise"] * noise_level * self.height_meas_scale
-        noise_vec[36:48] = 0.  # previous actions
-        return noise_vec
 
 
     def _create_ground_plane(self):
@@ -321,12 +257,6 @@ class A1(VecTask):
         else:
             self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.A1_handles[0], "trunk")
 
-    #M: Push Robot
-    def push_robots(self):
-        """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity. """
-        self.root_states[:, 7:9] = torch_rand_float(-1., 1., (self.num_envs, 2), device=self.device) # lin vel x/y
-        self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
-
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
         for _ in range(self.decimation):
@@ -347,13 +277,6 @@ class A1(VecTask):
 
         self.progress_buf += 1
 
-        #M: Push Robot
-        self.common_step_counter += 1
-
-        # #M: Push Robot
-        # if self.common_step_counter % self.push_interval == 0:
-        #     self.push_robots()
-
         # prepare quantities
         self.base_quat = self.root_states[:, 3:7]
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
@@ -373,11 +296,7 @@ class A1(VecTask):
 
         # Get observations
         self.compute_observations()
-
-        #M: Add noise
-        if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
-
+        
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_actions[:] = self.actions[:] 
 
@@ -461,7 +380,6 @@ class A1(VecTask):
         self.episode_sums["foot_contact"] += rew_foot_contact
         self.episode_sums["gait"] += rew_gait
         self.episode_sums["hip"] += rew_hip
-        self.episode_sums["rew_buf"] += self.rew_buf
 
     def compute_observations(self):
 
@@ -500,7 +418,6 @@ class A1(VecTask):
         self.feet_air_time[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.last_actions[env_ids] = 0.
-        self.stance_step_counter[env_ids] = 0.
 
         # Register individual reward data for logging
         self.extras["episode"] = {}
@@ -561,9 +478,9 @@ class A1(VecTask):
 
     def _reset_dofs(self,env_ids):
 
-        #positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
+        positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
 
-        self.dof_pos[env_ids] = self.default_dof_pos[env_ids] #* positions_offset
+        self.dof_pos[env_ids] = self.default_dof_pos[env_ids] * positions_offset
         self.dof_vel[env_ids] = 0.
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
@@ -581,13 +498,12 @@ class A1(VecTask):
         """
         # base position
         self.root_states[env_ids] = self.initial_root_states[env_ids]
-        # self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
-        #
-        # # base velocities
-        # self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
+        self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
+        
 
+        # base velocities
+        self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
         env_ids_int32 = env_ids.to(dtype=torch.int32)
-
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
@@ -598,127 +514,12 @@ class A1(VecTask):
         Args:
             env_ids (List[int]): Environments ids for which new commands are needed
         """
-        self.commands[env_ids, 0] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.commands[env_ids, 0] = 0.5#torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.commands[env_ids, 1] = 0 #torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.commands[env_ids, 2] = 0 #torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
 
         # set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
-
-    #M Load MPC Data
-    def load_mpc(self):
-            # load data from MPC
-        path = "/home/maria/motion_imitation/"
-        with np.load(path + "footsteps_mpc.npz") as target_mpc:
-            self.target_mpc = target_mpc["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts.npz") as conatct_mpc:
-            self.contacts = conatct_mpc["feet_contacts"]
-
-        # load MPC gaits
-        ########### tripod
-        with np.load(path + "foot_contacts01tp.npz") as ct_tp_01:
-            self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts02tp.npz") as ct_tp_02:
-            self.ct_tp_02 = ct_tp_02["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts03tp.npz") as ct_tp_03:
-            self.ct_tp_03 = ct_tp_03["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts04tp.npz") as ct_tp_04:
-            self.ct_tp_04 = ct_tp_04["feet_contacts"]
-        with np.load(path + "foot_contacts05tp.npz") as ct_tp_05:
-            self.ct_tp_05 = ct_tp_05["feet_contacts"]
-
-        ########### trotting
-        with np.load(path + "foot_contacts06tt.npz") as ct_tt_06:
-            self.ct_tt_06 = ct_tt_06["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts07tt.npz") as ct_tt_07:
-            self.ct_tt_07 = ct_tt_07["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts08tt.npz") as ct_tt_08:
-            self.ct_tt_08 = ct_tt_08["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts09tt.npz") as ct_tt_09:
-            self.ct_tt_09 = ct_tt_09["feet_contacts"]
-        with np.load(path + "foot_contacts10tt.npz") as ct_tt_10:
-            self.ct_tt_10 = ct_tt_10["feet_contacts"]
-
-        # load MPC footsteps
-        ########### trotting
-        with np.load(path + "footsteps_mpc01tp.npz") as f_tp_01:
-            self.f_tp_01 = f_tp_01["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc02tp.npz") as f_tp_02:
-            self.f_tp_02 = f_tp_02["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc03tp.npz") as f_tp_03:
-            self.f_tp_03 = f_tp_03["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc04tp.npz") as f_tp_04:
-            self.f_tp_04 = f_tp_04["footsteps"]
-        with np.load(path + "footsteps_mpc05tp.npz") as f_tp_05:
-            self.f_tp_05 = f_tp_05["footsteps"]
-
-        with np.load(path + "footsteps_mpc06tt.npz") as f_tt_06:
-            self.f_tt_06 = f_tt_06["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc07tt.npz") as f_tt_07:
-            self.f_tt_07 = f_tt_07["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc08tt.npz") as f_tt_08:
-            self.f_tt_08 = f_tt_08["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc09tt.npz") as f_tt_09:
-            self.f_tt_09 = f_tt_09["footsteps"]
-        with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
-            self.f_tt_10 = f_tt_10["footsteps"]
-
-    def load_mpc_390(self):
-        # load data from MPC
-        path = "/home/robohike/motion_imitation/"
-        with np.load(path + "footsteps_mpc.npz") as target_mpc:
-            self.target_mpc = target_mpc["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts.npz") as conatct_mpc:
-            self.contacts = conatct_mpc["feet_contacts"]
-
-        # load MPC gaits
-        ########### tripod
-        with np.load(path + "foot_contacts01tp.npz") as ct_tp_01:
-            self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts02tp.npz") as ct_tp_02:
-            self.ct_tp_02 = ct_tp_02["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts03tp.npz") as ct_tp_03:
-            self.ct_tp_03 = ct_tp_03["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts04tp.npz") as ct_tp_04:
-            self.ct_tp_04 = ct_tp_04["feet_contacts"]
-        with np.load(path + "foot_contacts05tp.npz") as ct_tp_05:
-            self.ct_tp_05 = ct_tp_05["feet_contacts"]
-
-        ########### trotting
-        with np.load(path + "foot_contacts06tt.npz") as ct_tt_06:
-            self.ct_tt_06 = ct_tt_06["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts07tt.npz") as ct_tt_07:
-            self.ct_tt_07 = ct_tt_07["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts08tt.npz") as ct_tt_08:
-            self.ct_tt_08 = ct_tt_08["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts09tt.npz") as ct_tt_09:
-            self.ct_tt_09 = ct_tt_09["feet_contacts"]
-        with np.load(path + "foot_contacts10tt.npz") as ct_tt_10:
-            self.ct_tt_10 = ct_tt_10["feet_contacts"]
-
-        # load MPC footsteps
-        ########### trotting
-        with np.load(path + "footsteps_mpc01.npz") as f_tp_01:
-            self.f_tp_01 = f_tp_01["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc02tp.npz") as f_tp_02:
-            self.f_tp_02 = f_tp_02["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc03tp.npz") as f_tp_03:
-            self.f_tp_03 = f_tp_03["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc04tp.npz") as f_tp_04:
-            self.f_tp_04 = f_tp_04["footsteps"]
-        with np.load(path + "footsteps_mpc05tp.npz") as f_tp_05:
-            self.f_tp_05 = f_tp_05["footsteps"]
-
-        with np.load(path + "footsteps_mpc06tt.npz") as f_tt_06:
-            self.f_tt_06 = f_tt_06["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc07tt.npz") as f_tt_07:
-            self.f_tt_07 = f_tt_07["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc08tt.npz") as f_tt_08:
-            self.f_tt_08 = f_tt_08["footsteps"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "footsteps_mpc09tt.npz") as f_tt_09:
-            self.f_tt_09 = f_tt_09["footsteps"]
-        with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
-            self.f_tt_10 = f_tt_10["footsteps"]
 
         
 #####################################################################
