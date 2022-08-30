@@ -425,25 +425,25 @@ class A1(VecTask):
         rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
         #print(rew_foot_air_time)
 
-        # ### Reward: Knee collision
-        # rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
-        #
-        # ### Reward: Action rate
-        # rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
-        #
-        # ### Reward: Foot contact
-        # rew_foot_contact = self._get_foot_contact_reward() * self.rew_scales["foot_contact"]
-        #
-        # ### Reward: Gait
-        # rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
-        #
-        # ### Reward: Hip
-        # rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
-        # #print(rew_hip[0])
+        ### Reward: Knee collision
+        rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
+
+        ### Reward: Action rate
+        rew_action_rate = torch.sum(torch.square(self.last_actions - self.actions), dim=1) * self.rew_scales["action_rate"]
+
+        ### Reward: Foot contact
+        rew_foot_contact = self._get_foot_contact_reward() * self.rew_scales["foot_contact"]
+
+        ### Reward: Gait
+        rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
+
+        ### Reward: Hip
+        rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
+        #print(rew_hip[0])
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-              rew_torque + rew_joint_acc #+ rew_action_rate  + rew_foot_contact +rew_gait + rew_hip +rew_foot_air_time +rew_knee_collision
+              rew_torque + rew_joint_acc + rew_action_rate  + rew_foot_contact +rew_gait + rew_hip #+rew_foot_air_time +rew_knee_collision
 
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
@@ -455,12 +455,14 @@ class A1(VecTask):
         self.episode_sums["joint_acc"] += rew_joint_acc
         self.episode_sums["base_height"] += rew_joint_acc
         self.episode_sums["air_time"] += rew_foot_air_time
-        # self.episode_sums["knee_collision"] += rew_joint_acc
-        # self.episode_sums["action_rate"] += rew_action_rate
-        # self.episode_sums["foot_contact"] += rew_foot_contact
-        # self.episode_sums["gait"] += rew_gait
-        # self.episode_sums["hip"] += rew_hip
+        self.episode_sums["knee_collision"] += rew_joint_acc
+        self.episode_sums["action_rate"] += rew_action_rate
+        self.episode_sums["foot_contact"] += rew_foot_contact
+        self.episode_sums["gait"] += rew_gait
+        self.episode_sums["hip"] += rew_hip
         self.episode_sums["rew_buf"] += self.rew_buf
+        print(heyhey)
+
 
     def compute_observations(self):
 

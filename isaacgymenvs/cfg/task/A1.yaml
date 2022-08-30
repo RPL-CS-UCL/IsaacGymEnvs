@@ -5,6 +5,7 @@ physics_engine: ${..physics_engine}
 
 env:
   numEnvs: ${resolve_default:4096,${...num_envs}} #4096
+
   numObservations: 48
   numActions: 12
   envSpacing: 3.  # [m]
@@ -33,8 +34,8 @@ env:
   control:
     # PD Drive parameters:
     #driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
-    #stiffness: 85.0  # [N*m/rad] 85.0
-    #damping: 2.0     # [N*m*s/rad] 2.0
+    stiffness: 20.0  # [N*m/rad] 85.0
+    damping: 0.5   # [N*m*s/rad] 2.0
     actionScale: 12.0
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
@@ -75,8 +76,8 @@ env:
     kneeCollisionRewardScale: -0.25 
     actionRateRewardScale: -0.01
     footcontactRewardScale: -0.05
-    gaitRewardScale: -0.1
-    hipRewardScale: -0.25 
+    gaitRewardScale: -0.0001
+    hipRewardScale: -0.000001  #-0.25 #-0.000001
 
     # normalization
     linearVelocityScale: 2.0
@@ -110,8 +111,6 @@ env:
     lookat: [1., 1, 3.3]  # [m]
 
 
-
-
   # set to True if you use camera sensors in the environment
   enableCameraSensors: False
 
@@ -137,7 +136,7 @@ sim:
     contact_collection: 2 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (default - all contacts)
 
 task:
-  randomize: false
+  randomize: true
   randomization_params:
     frequency: 500   # Define how many environment steps between generating new randomizations
 #    observations:
