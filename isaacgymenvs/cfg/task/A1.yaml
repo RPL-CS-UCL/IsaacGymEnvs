@@ -12,7 +12,34 @@ env:
   enableDebugVis: False
 
   #clipObservations: 100.0
-  clipActions: 30.0
+  clipActions: 27.0
+
+  terrain:
+    terrainType: plane # none, plane, trimesh, paper
+    staticFriction: 1.25  # [-]
+    dynamicFriction: 0.9  # [-]
+    restitution: 0.        # [-]
+    # rough terrain only:
+    curriculum: true
+    maxInitMapLevel: 0
+    mapLength: 20.
+    mapWidth: 20.
+    numLevels: 20
+    numTerrains: 2
+    #terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
+    #terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
+    terrainProportions: [ 0.5,0.5 ]
+    # tri mesh only:
+    # tri mesh only:
+    slopeTreshold: 0.5
+    horizontal_scale: 0.1
+    vertical_scale: 0.005
+    border_size: 4
+    num_per_env: 2
+    max_height: 0.025 #m
+    min_height: -0.075 #m
+    step_size: 0.01 #m
+    downsampled_scale: 0.2 #m
 
 
   plane:
@@ -28,15 +55,15 @@ env:
 
   randomCommandVelocityRanges:
     linear_x: [-1., 1.] # min max [m/s]
-    linear_y: [-1., 1.]   # min max [m/s]
-    yaw: [-1, 1]          # min max [rad/s]
+    linear_y: [-0.1, 0.1]   # min max [m/s]
+    yaw: [-0.1, 0.1]          # min max [rad/s]
 
   control:
     # PD Drive parameters:
     #driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
     stiffness: 20.0  # [N*m/rad] 85.0
     damping: 0.5   # [N*m*s/rad] 2.0
-    actionScale: 12.0
+    actionScale: 11.0
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
 
@@ -64,20 +91,22 @@ env:
   learn:
     allowKneeContacts: true
     # rewards
+    terminationReward: 0.0
     linearVelocityXYRewardScale: 1.1 #1.1
     linearVelocityZRewardScale: -4.0
     angularVelocityXYRewardScale: -0.05
     angularVelocityZRewardScale: 1.0
     orientationRewardScale: -2.4 
-    torqueRewardScale: -0.00002 
+    torqueRewardScale: -0.00002 #-0.00002
     jointAccRewardScale: -0.0005 
     baseHeightRewardScale: -5.0 
     feetAirTimeRewardScale:  0.3
     kneeCollisionRewardScale: -0.25 
     actionRateRewardScale: -0.01
     footcontactRewardScale: -0.05
-    gaitRewardScale: -0.0001
-    hipRewardScale: -0.000001  #-0.25 #-0.000001
+    gaitRewardScale: -0.7 #0.5
+    gaitPeriodRewardScale: -0.05 #0.01
+    footstepReward: -0.01
 
     # normalization
     linearVelocityScale: 2.0
@@ -92,13 +121,17 @@ env:
 
     #M: noise
     addNoise: true
-    noiseLevel: 1.25 # scales other values
+    noiseLevel: 1.0 # scales other values
     dofPositionNoise: 0.0005
     dofVelocityNoise: 0.01
     linearVelocityNoise: 0.1
-    angularVelocityNoise: 0.0001
-    gravityNoise: 0.00002
+    angularVelocityNoise: 0.00008
+    gravityNoise: 0.00001
     heightMeasurementNoise: 0.06
+
+    #randomization
+    randomizeFriction: true
+    frictionRange: [ 0.5, 1.25 ]
 
     #M: Push Robot
     pushRobots: false
