@@ -38,10 +38,14 @@ import yaml
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import to_absolute_path
 import gym
-
+import ray
+from ray import tune
 from isaacgymenvs.utils.reformat import omegaconf_to_dict, print_dict
 
 from isaacgymenvs.utils.utils import set_np_formatting, set_seed
+
+import ray
+from ray import tune
 
 ## OmegaConf & Hydra Config
 
@@ -66,7 +70,7 @@ def launch_rlg_hydra(cfg: DictConfig):
         cfg.checkpoint = to_absolute_path(cfg.checkpoint)
 
     cfg_dict = omegaconf_to_dict(cfg)
-    print_dict(cfg_dict)
+    #print_dict(cfg_dict)
 
     # set numpy formatting for printing only
     set_np_formatting()
@@ -163,5 +167,18 @@ def launch_rlg_hydra(cfg: DictConfig):
     if cfg.wandb_activate and rank == 0:
         wandb.finish()
 
+
 if __name__ == "__main__":
     launch_rlg_hydra()
+
+    # ray.init(ignore_reinit_error=True)
+    # stop = {
+    #     'timesteps_total': 10000
+    # }
+    # results = tune.run(
+    #     launch_rlg_hydra(),  # Specify the algorithm to train
+    #     config=launch_rlg_hydra.cfg.train,
+    #     stop=15000
+    # )
+
+
