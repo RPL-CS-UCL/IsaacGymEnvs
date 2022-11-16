@@ -1,4 +1,6 @@
 # used to create the object
+
+
 name: A1
 
 physics_engine: ${..physics_engine}
@@ -78,8 +80,8 @@ env:
     gaitRewardScale: -0.1
     gaitPeriodRewardScale: -0.001
     gaitTrajectoryRewardScale: -0.001
-    #gaitRewardScale: tune.grid_search([5*1e-2, 1e-3, 5*1e-3, 1e-4, 5*1e-4, 1e-5, 1e-6])
-    #gaitPeriodRewardScale: tune.grid_search([5*1e-2, 1e-3, 5*1e-3, 1e-4, 5*1e-4, 1e-5, 1e-6])
+#    gaitRewardScale: tune.grid_search([5*1e-2, 1e-3, 5*1e-3, 1e-4, 5*1e-4, 1e-5, 1e-6])
+#    gaitPeriodRewardScale: tune.grid_search([5*1e-2, 1e-3, 5*1e-3, 1e-4, 5*1e-4, 1e-5, 1e-6])
 
     # normalization
     linearVelocityScale: 2.0

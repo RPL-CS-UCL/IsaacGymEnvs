@@ -38,8 +38,7 @@ import yaml
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import to_absolute_path
 import gym
-import ray
-from ray import tune
+
 from isaacgymenvs.utils.reformat import omegaconf_to_dict, print_dict
 
 from isaacgymenvs.utils.utils import set_np_formatting, set_seed
@@ -144,6 +143,7 @@ def launch_rlg_hydra(cfg: DictConfig):
         return runner
 
     rlg_config_dict = omegaconf_to_dict(cfg.train)
+    train_config_dict = omegaconf_to_dict(cfg.task)
 
     # convert CLI arguments into dictionory
     # create runner and set the settings
@@ -176,9 +176,9 @@ if __name__ == "__main__":
     #     'timesteps_total': 10000
     # }
     # results = tune.run(
-    #     launch_rlg_hydra(),  # Specify the algorithm to train
-    #     config=launch_rlg_hydra.cfg.train,
-    #     stop=15000
-    # )
+    #     launch_rlg_hydra().runner,  # Specify the algorithm to train
+    #     config= launch_rlg_hydra().train_config_dict,
+    #     stop = stop
+    #)
 
 
