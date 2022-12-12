@@ -42,6 +42,7 @@ import gym
 from isaacgymenvs.utils.reformat import omegaconf_to_dict, print_dict
 
 from isaacgymenvs.utils.utils import set_np_formatting, set_seed
+import optuna
 
 import ray
 from ray import tune
@@ -168,8 +169,17 @@ def launch_rlg_hydra(cfg: DictConfig):
         wandb.finish()
 
 
+# def print_best_callback(study, trial):
+#     print(f"Best value: {study.best_value}, Best params: {study.best_trial.params}")
+
+
 if __name__ == "__main__":
     launch_rlg_hydra()
+    ## Optimisation
+    # study = optuna.create_study()
+    # study.optimize(launch_rlg_hydra(), n_trials=50, callbacks=[print_best_callback])
+    #
+
 
     # ray.init(ignore_reinit_error=True)
     # stop = {

@@ -35,9 +35,9 @@ def load_checkpoint(filename):
 def generate_network():
 
     # Loading trained model file
-    trained_model_path = '/home/robohike/IsaacGymEnvsNews/isaacgymenvs/runs/A1/save_runs/A1_Rokas_pushes.pth'
+    trained_model_path = '/home/robohike/IsaacGymEnvsNews/isaacgymenvs/runs/A1/save_runs/A1_pushes_n.pth'
     trained_model_parameters = load_checkpoint(trained_model_path)
-    check = trained_model_parameters["model"]
+
     running_mean = trained_model_parameters["model"]["running_mean_std.running_mean"]
     running_var = trained_model_parameters["model"]["running_mean_std.running_var"]
     running_count = trained_model_parameters["model"]["running_mean_std.count"]
@@ -51,6 +51,8 @@ def generate_network():
 
     # Initialising model parameters from the trained network
     model.load_state_dict(trained_model_parameters)
+    check = model.load_state_dict(trained_model_parameters)
+    check2 = trained_model_parameters
 
     # Example for the network input (required by jit trace)
     example_input = torch.rand(1,48)
@@ -60,7 +62,9 @@ def generate_network():
 
     # Serializing the traced module
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    save_path = os.path.join(dir_path,'traced_A1_NN.pt')
+    save_path = os.path.join(dir_path,'traced_A1_NN_NEW.pt')
+
+
     traced_script_module.save(save_path)
 
     print("Successfully serialized the network!")
@@ -107,14 +111,16 @@ class NeuralNet(nn.Module):
         mu_out = self.mu_activation(self.mu(mlp_out))
 
         ## For stochastic networks
-        #logstd = mu_out * 0.0 + self.sigma_activation(self.sigma)
-        #sigma_out = torch.exp(logstd)
-        #distr = torch.distributions.Normal(mu_out, sigma_out)
-        #selected_action = distr.sample()
+        # logstd = mu_out * 0.0 + self.sigma_activation(self.sigma)
+        # sigma_out = torch.exp(logstd)
+        # distr = torch.distributions.Normal(mu_out, sigma_out)
+        # selected_action = distr.sample()
+        # selected_action = mu_out * self.cfg['env']['control']['actionScale']
+        # selected_action = torch.clamp(selected_action,-30,30)
 
         # For deterministic outputs
         action = mu_out * self.cfg['env']['control']['actionScale']
-        action = torch.clamp(action,-30,30)
+        action = torch.clamp(mu_out,-30,30)
 
         return action
 
@@ -122,10 +128,20 @@ class NeuralNet(nn.Module):
         """
         The function preprocesses the raw observation inputs before dending them to the neural network
         """
-
+    
         #TODO Depending on the input format, convert to tensors and apply observation scaling from self.cfg
 
-        X = torch.tensor(X)
+
+        X = torch.squeeze(X, 0).cpu()
+  
+        #
+        X[:3] *= self.cfg["env"]["learn"]["linearVelocityScale"]
+        X[3:6] *= self.cfg["env"]["learn"]["angularVelocityScale"]
+        X[6:9] *= self.cfg["env"]["learn"]["projectedGravityScale"]
+        X[9:12] *= torch.tensor(self.cfg["env"]["learn"]["userCommandScale"], requires_grad=False).cpu()
+        X[12:24] *= self.cfg["env"]["learn"]["dofPositionScale"]
+        X[24:36] *= self.cfg["env"]["learn"]["dofVelocityScale"]
+
 
         return X
 

@@ -33,9 +33,9 @@ env:
 
   control:
     # PD Drive parameters:
-    #driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
-    #stiffness: 85.0  # [N*m/rad] 85.0
-    #damping: 2.0     # [N*m*s/rad] 2.0
+    driveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
+#    stiffness: 12.0  # [N*m/rad] 85.0
+#    damping: 0.5    # [N*m*s/rad] 2.0
     actionScale: 14.0
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
@@ -72,11 +72,11 @@ env:
     torqueRewardScale: -0.00002 
     jointAccRewardScale: -0.0005 
     baseHeightRewardScale: -5.0 
-    #feetAirTimeRewardScale:  0.3
-    #kneeCollisionRewardScale: -0.25
+    feetAirTimeRewardScale:  0.3
+    kneeCollisionRewardScale: -0.25
     actionRateRewardScale: -0.01
-    #footcontactRewardScale: -0.05
-    #hipRewardScale: -0.25
+    footcontactRewardScale: -0.05
+    hipRewardScale: -0.25
     gaitRewardScale: -0.1
     gaitPeriodRewardScale: -0.001
     gaitTrajectoryRewardScale: -0.001
@@ -95,8 +95,35 @@ env:
     episodeLength_s: 20
 
     #M: Push Robot
-    pushRobots: false
+    pushRobot: false
     pushInterval_s: 17
+
+  terrain:
+    terrainType: plane # none, plane, trimesh, paper # none, plane, trimesh, paper
+    staticFriction: 1.25  # [-]
+    dynamicFriction: 0.9  # [-]
+    restitution: 0.        # [-]
+    # rough terrain only:
+    curriculum: true
+    maxInitMapLevel: 0
+    mapLength: 20.
+    mapWidth: 20.
+    numLevels: 5
+    numTerrains: 3
+    #terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
+    #terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
+    terrainProportions: [1]
+    # tri mesh only:
+    # tri mesh only:
+    slopeTreshold: 0.5
+    horizontal_scale: 1
+    vertical_scale: 1
+    border_size: 4
+    num_per_env: 2
+    max_height: 0.025 #m
+    min_height: -0.075 #m
+    step_size: 0.01 #m
+    downsampled_scale: 0.2 #m
 
   # viewer cam:
   viewer:
@@ -151,7 +178,7 @@ task:
       A1:
         color: True
         rigid_body_properties:
-          mass: 
+          mass:
             range: [0.5, 1.5]
             operation: "scaling"
             distribution: "uniform"
@@ -173,13 +200,13 @@ task:
             schedule: "linear"  # "linear" will scale the current random sample by `min(current num steps, schedule_steps) / schedule_steps`
             schedule_steps: 3000
         dof_properties:
-          damping: 
+          damping:
             range: [0.5, 1.5]
             operation: "scaling"
             distribution: "uniform"
             schedule: "linear"  # "linear" will scale the current random sample by `min(current num steps, schedule_steps) / schedule_steps`
             schedule_steps: 3000
-          stiffness: 
+          stiffness:
             range: [0.5, 1.5]
             operation: "scaling"
             distribution: "uniform"
