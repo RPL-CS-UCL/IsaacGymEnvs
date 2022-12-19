@@ -35,19 +35,28 @@ def load_checkpoint(filename):
 def generate_network():
 
     # Loading trained model file
-    trained_model_path = '/home/robohike/IsaacGymEnvsNews/isaacgymenvs/runs/A1/save_runs/A1_pushes_n.pth'
-    trained_model_parameters = load_checkpoint(trained_model_path)
+    rel_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = os.path.join(rel_path,'../../runs/A1/nn/A1_pushes_n.pth')
+    trained_model_parameters = load_checkpoint(file_path)
 
-    running_mean = trained_model_parameters["model"]["running_mean_std.running_mean"]
-    running_var = trained_model_parameters["model"]["running_mean_std.running_var"]
-    running_count = trained_model_parameters["model"]["running_mean_std.count"]
+    normalize = True
+    try:
+        running_mean = trained_model_parameters["model"]["running_mean_std.running_mean"]
+        running_var = trained_model_parameters["model"]["running_mean_std.running_var"]
+        running_count = trained_model_parameters["model"]["running_mean_std.count"]
+    except:
+        running_mean = torch.zeros(48)
+        running_var = torch.ones(48)
+        running_count = torch.zeros(1)
+        normalize = False
 
     # Loading task configuration file
-    with open('/home/robohike/IsaacGymEnvsNews/isaacgymenvs/cfg/task/A1.yaml', 'r') as file:
+    yaml_path = os.path.abspath(os.path.join(rel_path,'../cfg/task/A1.yaml'))
+    with open(yaml_path, 'r') as file:
         cfg = yaml.safe_load(file)
 
     # Initialising a new model
-    model = NeuralNet(cfg, running_mean, running_var, running_count )
+    model = NeuralNet(cfg, running_mean, running_var, running_count, normalize )
 
     # Initialising model parameters from the trained network
     model.load_state_dict(trained_model_parameters)
@@ -61,9 +70,7 @@ def generate_network():
     traced_script_module = torch.jit.trace(model,example_input)
 
     # Serializing the traced module
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    save_path = os.path.join(dir_path,'traced_A1_NN_NEW.pt')
-
+    save_path = os.path.join(rel_path,'traced_A1_NN_NORMALIZED.pt')
 
     traced_script_module.save(save_path)
 
@@ -71,17 +78,20 @@ def generate_network():
 
 
 class NeuralNet(nn.Module):
-    def __init__(self,cfg, running_mean, running_var, running_count) -> None:
+    def __init__(self,cfg, running_mean, running_var, running_count, normalize) -> None:
         super().__init__()
 
         # Task config file
         self.cfg = cfg
 
-        self.running_mean_std = RunningMeanStd(torch.tensor(48))
-        self.running_mean_std.training = False
-        self.running_mean_std.register_buffer("running_mean", running_mean.cpu())
-        self.running_mean_std.register_buffer("running_var", running_var.cpu())
-        self.running_mean_std.register_buffer("count", running_count.cpu())
+        self.normalize = normalize
+
+        if self.normalize:
+            self.running_mean_std = RunningMeanStd(torch.tensor(48))
+            self.running_mean_std.training = False
+            self.running_mean_std.register_buffer("running_mean", running_mean.cpu())
+            self.running_mean_std.register_buffer("running_var", running_var.cpu())
+            self.running_mean_std.register_buffer("count", running_count.cpu())
 
 
         mlp_layers = [
@@ -104,7 +114,8 @@ class NeuralNet(nn.Module):
 
         X = self.preprocess_obs(X)
 
-        X = self.running_mean_std.forward(X)
+        if self.normalize:
+            X = self.running_mean_std.forward(X)
 
         mlp_out = self.mlp(X)
 
@@ -119,8 +130,9 @@ class NeuralNet(nn.Module):
         # selected_action = torch.clamp(selected_action,-30,30)
 
         # For deterministic outputs
-        action = mu_out * self.cfg['env']['control']['actionScale']
-        action = torch.clamp(mu_out,-30,30)
+        #action = mu_out * self.cfg['env']['control']['actionScale']
+        action = mu_out
+        #action = torch.clamp(mu_out,-30,30)
 
         return action
 
@@ -135,12 +147,12 @@ class NeuralNet(nn.Module):
         X = torch.squeeze(X, 0).cpu()
   
         #
-        X[:3] *= self.cfg["env"]["learn"]["linearVelocityScale"]
-        X[3:6] *= self.cfg["env"]["learn"]["angularVelocityScale"]
-        X[6:9] *= self.cfg["env"]["learn"]["projectedGravityScale"]
-        X[9:12] *= torch.tensor(self.cfg["env"]["learn"]["userCommandScale"], requires_grad=False).cpu()
-        X[12:24] *= self.cfg["env"]["learn"]["dofPositionScale"]
-        X[24:36] *= self.cfg["env"]["learn"]["dofVelocityScale"]
+        #X[:3] *= self.cfg["env"]["learn"]["linearVelocityScale"]
+        #X[3:6] *= self.cfg["env"]["learn"]["angularVelocityScale"]
+        #X[6:9] *= self.cfg["env"]["learn"]["projectedGravityScale"]
+        #X[9:12] *= torch.tensor(self.cfg["env"]["learn"]["userCommandScale"], requires_grad=False).cpu()
+        #X[12:24] *= self.cfg["env"]["learn"]["dofPositionScale"]
+        #X[24:36] *= self.cfg["env"]["learn"]["dofVelocityScale"]
 
 
         return X

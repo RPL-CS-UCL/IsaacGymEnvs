@@ -32,3 +32,4 @@ outputs/
 /isaacgymenvs/wandb
 *.code-workspace
 virtual_env/*
+/deployment

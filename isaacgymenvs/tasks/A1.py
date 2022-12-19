@@ -897,7 +897,9 @@ class A1(VecTask):
     #################### MPC Functions
     def load_mpc_390(self):
         # load data from MPC
-        path = "/home/robohike/motion_imitation/2500/"
+        rel_path = os.path.dirname(__file__)
+        file_path = "../../../../motion_imitation/2500/"
+        path = os.path.abspath(os.path.join(rel_path, file_path)) + "/"
 
         # load MPC gaits
         ########### tripod
@@ -1210,8 +1212,10 @@ class A1(VecTask):
         torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
 
     def test_extracted_NN(self):
-        NN_path = "NN/traced_A1_NN_NEW.pt"
-        load_NN = torch.jit.load(NN_path)
+        NN_path = "../NN/traced_A1_NN_LAST.pt"
+        rel_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(rel_path, NN_path)
+        load_NN = torch.jit.load(file_path)
         load_NN.eval()
         check = self.obs_buf
         actions = load_NN.forward(self.obs_buf)
