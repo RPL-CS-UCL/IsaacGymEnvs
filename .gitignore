@@ -33,3 +33,4 @@ outputs/
 *.code-workspace
 virtual_env/
 deployment/
+venv/
