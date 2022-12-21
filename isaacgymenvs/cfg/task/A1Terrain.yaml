@@ -23,9 +23,9 @@ env:
     numLevels: 10
     numTerrains: 20
     # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-    terrainProportions: [0.1, 0.1, 0.35, 0.25, 0.2]
+    terrainProportions: [0.1, 0.1, 0.15, 0.15, 0.1]
     # tri mesh only:
-    slopeTreshold: 0.5
+    slopeTreshold: 0.2
 
   baseInitState:
     pos: [0.0, 0.0, 0.35] # x,y,z [m]
@@ -37,7 +37,7 @@ env:
     # train
     linear_x: [-1., 1.] # min max [m/s]
     linear_y: [-1., 1.]   # min max [m/s]
-    yaw: [-3.14, 3.14]    # min max [rad/s]
+    yaw: [-1, 1]    # min max [rad/s]
 
   control:
     # PD Drive parameters:
@@ -72,7 +72,7 @@ env:
     kneeName: thigh
     collapseFixedJoints: False
     fixBaseLink: false
-    defaultDofDriveMode: 4 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
+    defaultDofDriveMode: 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 4 effort)
 
   learn:
     allowKneeContacts: true
@@ -101,19 +101,18 @@ env:
     userCommandScale: [2.0, 2.0, 0.25]
 
     # noise 
-    addNoise: true
+    addNoise: false
     noiseLevel: 1.0 # scales other values
     dofPositionNoise: 0.01
     dofVelocityNoise: 1.5
     linearVelocityNoise: 0.1
     angularVelocityNoise: 0.2
     gravityNoise: 0.05
-    heightMeasurementNoise: 0.06
 
     #randomization
     randomizeFriction: true
     frictionRange: [0.5, 1.25]
-    pushRobots: true
+    pushRobots: false
     pushInterval_s: 15
 
     # episode length in seconds

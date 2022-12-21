@@ -283,7 +283,7 @@ class A1Terrain(VecTask):
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.A1_handles[0], knee_names[i])
 
-        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.A1_handles[0], "trunk")
+        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.A1_handles[0], "base")
 
         # L structure for gait rewards
         self.L = [[self.dof_names.index('FL_thigh_joint'),self.dof_names.index('RR_thigh_joint')],
@@ -298,7 +298,7 @@ class A1Terrain(VecTask):
                     self.dof_names.index('RR_hip_joint')]
 
     def check_termination(self):
-        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
@@ -424,11 +424,8 @@ class A1Terrain(VecTask):
 
 
     def reset_idx(self, env_ids):
-        # positions_offset = torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
-        # velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
-
-        positions_offset = torch_rand_float(0.0, 0.0, (len(env_ids), self.num_dof), device=self.device)
-        velocities = torch_rand_float(-0.0, 0.0, (len(env_ids), self.num_dof), device=self.device)
+        positions_offset = torch_rand_float(0.8, 1.2, (len(env_ids), self.num_dof), device=self.device)
+        velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
 
         self.dof_pos[env_ids] = self.default_dof_pos[env_ids] * positions_offset
         self.dof_vel[env_ids] = velocities
@@ -480,14 +477,13 @@ class A1Terrain(VecTask):
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
 
     def push_robots(self):
-        self.root_states[:, 7:9] = torch_rand_float(-1., 1., (self.num_envs, 2), device=self.device) # lin vel x/y
+        self.root_states[:, 7:9] = torch_rand_float(-0.1, 0.1, (self.num_envs, 2), device=self.device) # lin vel x/y
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
+        time.sleep(0.01)
         for i in range(self.decimation):
-            #torques = torch.clip(self.Kp*(self.action_scale*self.actions + self.default_dof_pos - self.dof_pos) - self.Kd*self.dof_vel,
-                                 #-80., 80.)
             torques = torch.clip(self.action_scale*self.actions, -30, 30)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
