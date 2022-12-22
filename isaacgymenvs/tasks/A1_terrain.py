@@ -170,12 +170,13 @@ class A1Terrain(VecTask):
         noise_vec = torch.zeros_like(self.obs_buf[0])
         self.add_noise = self.cfg["env"]["learn"]["addNoise"]
         noise_level = self.cfg["env"]["learn"]["noiseLevel"]
-        noise_vec[:3] = self.cfg["env"]["learn"]["linearVelocityNoise"] * noise_level * self.lin_vel_scale
-        noise_vec[3:6] = self.cfg["env"]["learn"]["angularVelocityNoise"] * noise_level * self.ang_vel_scale
-        noise_vec[6:9] = self.cfg["env"]["learn"]["gravityNoise"] * noise_level * self.proj_grav_scale
+
+        noise_vec[:3] = self.cfg["env"]["learn"]["linearVelocityNoise"] * noise_level
+        noise_vec[3:6] = self.cfg["env"]["learn"]["angularVelocityNoise"] * noise_level
+        noise_vec[6:9] = self.cfg["env"]["learn"]["gravityNoise"] * noise_level
         noise_vec[9:12] = 0. # commands
-        noise_vec[12:24] = self.cfg["env"]["learn"]["dofPositionNoise"] * noise_level * self.dof_pos_scale
-        noise_vec[24:36] = self.cfg["env"]["learn"]["dofVelocityNoise"] * noise_level * self.dof_vel_scale
+        noise_vec[12:24] = self.cfg["env"]["learn"]["dofPositionNoise"] * noise_level
+        noise_vec[24:36] = self.cfg["env"]["learn"]["dofVelocityNoise"] * noise_level
         noise_vec[36:] = 0. # previous actions
         return noise_vec
 
@@ -516,7 +517,8 @@ class A1Terrain(VecTask):
 
         self.compute_observations()
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            #self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            self.obs_buf += torch.normal(0, torch.ones_like(self.obs_buf) * self.noise_scale_vec)
 
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
