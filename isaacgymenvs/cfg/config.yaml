@@ -36,6 +36,7 @@ num_subscenes: 4 # Splits the simulation into N physics scenes and runs each one
 test: False
 # used to set checkpoint path
 checkpoint: ''
+#checkpoint: '/home/rokas/git/IsaacGymEnvs/runs/A1Terrain/nn/A1Terrain.pth'
 # set to True to use multi-gpu horovod training
 multi_gpu: False
 
@@ -54,7 +55,7 @@ headless: False
 
 # set default task and default training config based on task
 defaults:
-  - task: Ant
+  - task: A1Terrain
   - train: ${task}PPO
   - hydra/job_logging: disabled
 
