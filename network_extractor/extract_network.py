@@ -34,10 +34,27 @@ def load_checkpoint(filename):
 
 def generate_network():
 
-    # Loading trained model file
+    ## Loading trained model file
+
+    # rel_path = os.path.dirname(os.path.realpath(__file__))
+    # file_path = os.path.join(rel_path, '../runs/A1Terrain/nn/A1Terrain.pth')
+
+    #Set home and folder paths
+    home_directory = os.path.expanduser('~')
+    path = os.path.join(home_directory, 'IsaacGymEnvs/isaacgymenvs')
     rel_path = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(rel_path,'../runs/A1Terrain/nn/A1Terrain.pth')
-    trained_model_parameters = load_checkpoint(file_path)
+
+    #Get checkpoint and cfg paths
+    file_name = 'nd_cur_2'
+    checkpoint_path = os.path.join(path,'runs/A1Terrain/save_runs/'+file_name+'.pth')
+    cfg_path = os.path.join(path, 'cfg/task/A1Terrain.yaml')
+
+    #load checkpoint
+    trained_model_parameters = load_checkpoint(checkpoint_path)
+
+    #load cfg file
+    with open(cfg_path, 'r') as file:
+        cfg = yaml.safe_load(file)
 
     normalize = True
     try:
@@ -53,7 +70,7 @@ def generate_network():
         print("No normalization applied!")
 
     # Initialising a new model
-    model = NeuralNet(running_mean, running_var, running_count, normalize )
+    model = NeuralNet(cfg,running_mean, running_var, running_count, normalize)
 
     # Initialising model parameters from the trained network
     model.load_state_dict(trained_model_parameters)
@@ -65,17 +82,20 @@ def generate_network():
     traced_script_module = torch.jit.trace(model,example_input)
 
     # Serializing the traced module
-    save_path = os.path.join(rel_path,'A1_plane.pt')
+    NN_file_name = 'traced_'+file_name+'.pt'
+    save_path = os.path.join(rel_path,NN_file_name)
 
     traced_script_module.save(save_path)
 
     print("Successfully serialized the network!")
+    print("File saved with name" + " " + NN_file_name)
 
 
 class NeuralNet(nn.Module):
-    def __init__(self, running_mean, running_var, running_count, normalize) -> None:
+    def __init__(self, cfg, running_mean, running_var, running_count, normalize) -> None:
         super().__init__()
 
+        self.cfg = cfg
         self.normalize = normalize
 
         if self.normalize:
@@ -114,15 +134,25 @@ class NeuralNet(nn.Module):
         mu_out = self.mu_activation(self.mu(mlp_out))
 
         action = mu_out
+        action = torch.clamp(mu_out,-30,30)
 
         return action
 
     def preprocess_obs(self,X):
         """
-        The function preprocesses the raw observation inputs before dending them to the neural network
+        The function preprocesses the raw observation inputs before sending them to the neural network
         """
 
         X = torch.squeeze(X, 0).cpu()
+
+        '''Specific normalisation parameters for A1Terrain'''
+
+        # X[:3] *= self.cfg["env"]["learn"]["linearVelocityScale"]
+        # X[3:6] *= self.cfg["env"]["learn"]["angularVelocityScale"]
+        # X[6:9] *= self.cfg["env"]["learn"]["projectedGravityScale"]
+        # X[9:12] *= torch.tensor(self.cfg["env"]["learn"]["userCommandScale"], requires_grad=False).cpu()
+        # X[12:24] *= self.cfg["env"]["learn"]["dofPositionScale"]
+        # X[24:36] *= self.cfg["env"]["learn"]["dofVelocityScale"]
 
         return X
 

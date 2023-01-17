@@ -103,6 +103,9 @@ class A1Terrain(VecTask):
 
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
 
+        self.save_data = self.cfg["env"]["post_process"]["save_data"]
+
+
         if self.graphics_device_id != -1:
             p = self.cfg["env"]["viewer"]["pos"]
             lookat = self.cfg["env"]["viewer"]["lookat"]
@@ -150,10 +153,35 @@ class A1Terrain(VecTask):
         self.episode_sums = {"lin_vel_xy": torch_zeros(), "lin_vel_z": torch_zeros(), "ang_vel_z": torch_zeros(),
                              "ang_vel_xy": torch_zeros(), "orient": torch_zeros(), "torques": torch_zeros(), "joint_acc": torch_zeros(),
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(),
-                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros()}
+                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(),"total_reward": torch_zeros()}
+
+        #### testing data
+        if self.save_data:
+            self.save_footstep = []
+            self.save_ref_cont = []
+            self.save_torques = []
+            self.save_com_vel = []
+            self.save_pos = []
+            self.save_period = []
+
+
+        self.iteration_index = torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
+
+
+
+        self.init_done = True
+
+        self.home_dir = os.path.expanduser('~')
+        self.NN_path = os.path.join(self.home_dir, 'IsaacGymEnvs/network_extractor')
+
+
+        #initialise action filter
+        if self.cfg["env"]["learn"]["actionFilter"]:
+            self.action_filter = ActionFilterButter(sampling_rate=1/(self.dt * self.decimation), num_joints=self.num_actions, device = self.device, num_envs= self.num_envs)
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        self.init_done = True
+
+
 
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
@@ -382,6 +410,18 @@ class A1Terrain(VecTask):
         self.episode_sums["foot_contact"] += rew_foot_contact
         self.episode_sums["gait"] += rew_gait
         self.episode_sums["hip"] += rew_hip
+        self.episode_sums["total_reward"] += self.rew_buf
+
+        if self.save_data:
+            error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
+            self.save_footstep.append(self.sim_contacts)
+            self.save_ref_cont.append(self.desired_mpc)
+            self.save_com_vel.append(self.base_lin_vel)
+            self.save_torques.append(self.torques)
+            self.save_pos.append(self.hip_sim)
+            self.save_period.append(torch.mean(self._gait_period(),dim=-1))
+            check = self.save_period
+
 
     def _get_reward_foot_air_time(self):
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
@@ -452,6 +492,14 @@ class A1Terrain(VecTask):
         self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze()
         self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze()
         self.commands[env_ids] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.25).unsqueeze(1) # set small commands to zero
+        '''
+
+
+        #for testing 
+        self.commands[env_ids, 0] = 0.9
+        self.commands[env_ids, 1] = 0.  
+        self.commands[env_ids, 2] = 0.
+        '''
 
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
@@ -459,12 +507,18 @@ class A1Terrain(VecTask):
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
 
+        self.iteration_index[env_ids] = 0
+
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
             self.extras["episode"]['rew_' + key] = torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s
             self.episode_sums[key][env_ids] = 0.
         self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+
+        # TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts
+        self.action_filter.reset_term(env_ids)
+
 
     def update_terrain_level(self, env_ids):
         if not self.init_done or not self.curriculum:
@@ -477,16 +531,39 @@ class A1Terrain(VecTask):
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
 
     def push_robots(self):
-        self.root_states[:, 7:9] = torch_rand_float(-1.0, 1.0, (self.num_envs, 2), device=self.device) # lin vel x/y
+        self.root_states[:, 7:9] = torch_rand_float(-0.2, 0.7, (self.num_envs, 2), device=self.device) # lin vel x/y
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def pre_physics_step(self, actions):
-        self.actions = actions.clone().to(self.device)
-        for i in range(self.decimation):
-            torques = torch.clip(self.action_scale*self.actions, -30, 30)
+        check = actions
+
+        testNN = self.cfg["env"]["post_process"]["test_NN"]
+
+
+        if testNN == True:
+            actionsNN = self.test_extracted_NN('traced_nd_cur_2.pt')
+            self.actions = actionsNN.clone().to(self.device)
+
+        else:
+            self.actions = actions.clone().to(self.device)
+
+        for _ in range(self.decimation):
+
+            torques = self.action_scale * self.actions
+
+            if self.cfg["env"]["learn"]["actionFilter"]:
+                #print(self.iteration_index)
+                #torques = self.action_filter.filter(torques.clone())
+                torques = self._FilterAction(torques)
+
+            actions = self.actions
+
+            torques = torch.clip(torques, -self.clip_actions, self.clip_actions)
+
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
             self.gym.simulate(self.sim)
+            self.iteration_index += 1
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
@@ -499,6 +576,7 @@ class A1Terrain(VecTask):
         self.progress_buf += 1
         self.randomize_buf += 1
         self.common_step_counter += 1
+
         if self.common_step_counter % self.push_interval == 0:
             self.push_robots()
 
@@ -511,6 +589,11 @@ class A1Terrain(VecTask):
         # compute observations, rewards, resets, ...
         self.check_termination()
         self.compute_reward()
+
+        # Save Data when testing
+        if self.save_data:
+            self.testing_save_data(self.home_dir)
+
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         if len(env_ids) > 0:
             self.reset_idx(env_ids)
@@ -522,6 +605,54 @@ class A1Terrain(VecTask):
 
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
+
+    def test_extracted_NN(self,name_of_file):
+        # take to ocnstructor
+        NN_file = os.path.join(self.NN_path, name_of_file)
+        load_NN = torch.jit.load(NN_file)
+        load_NN.eval()
+
+
+        actions = load_NN.forward(self.obs_buf)
+        actions = torch.unsqueeze(actions, 0)
+        return actions
+
+    def testing_save_data(self,pc):
+        save_vel = 'p09'
+        torch.save(self.save_footstep, '/home/'+pc+'/test_data/fc'+save_vel+'.pt')
+        torch.save(self.save_com_vel, '/home/'+pc+'/test_data/vel'+save_vel+'.pt')
+        torch.save(self.save_torques, '/home/'+pc+'/test_data/trq'+save_vel+'.pt')
+        torch.save(self.save_ref_cont, '/home/'+pc+'/test_data/ref'+save_vel+'.pt')
+        torch.save(self.save_pos, '/home/'+pc+'/test_data/pos'+save_vel+'.pt')
+        torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
+
+    def _FilterAction(self, action):
+        # initialize the filter history, since resetting the filter will fill
+        # the history with zeros and this can cause sudden movements at the start
+        # of each episode
+
+
+        #TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts (where?)
+
+
+
+
+       ##### Initilisaing history deque if its the first step
+
+        default_action = self.default_dof_pos
+
+        # I made a dummy tensor just so the init_history only gets called for the indeces of  self.iteration_index == 0,
+        # which is when each env resets
+        # The tensor is not used anywhere in the code
+
+        init_hist = torch.zeros(self.num_envs).to(self.device)
+        init_hist= torch.where(self.iteration_index == 0, self.action_filter.init_history(default_action), torch.zeros_like(self.iteration_index).to(self.device))
+
+
+        #### Filter the action from pre_physics step
+        filtered_action = self.action_filter.filter(action)
+
+        return filtered_action
 
 
 # terrain generator
@@ -577,35 +708,24 @@ class Terrain:
                               length=self.width_per_env_pixels,
                               vertical_scale=self.vertical_scale,
                               horizontal_scale=self.horizontal_scale)
-            choice = np.random.uniform(0, 1)
-            if choice < 0.1:
-                if np.random.choice([0, 1]):
-                    pyramid_sloped_terrain(terrain, np.random.choice([-0.3, -0.2, 0, 0.2, 0.3]))
-                    random_uniform_terrain(terrain, min_height=-0.1, max_height=0.1, step=0.05, downsampled_scale=0.2)
-                else:
-                    pyramid_sloped_terrain(terrain, np.random.choice([-0.3, -0.2, 0, 0.2, 0.3]))
-            elif choice < 0.6:
-                # step_height = np.random.choice([-0.18, -0.15, -0.1, -0.05, 0.05, 0.1, 0.15, 0.18])
-                step_height = np.random.choice([-0.15, 0.15])
-                pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
-            elif choice < 1.:
-                discrete_obstacles_terrain(terrain, 0.15, 1., 2., 40, platform_size=3.)
 
+
+            random_uniform_terrain(terrain, min_height=-0.1, max_height=0.1, step=0.05, downsampled_scale=0.2)
             self.height_field_raw[start_x: end_x, start_y:end_y] = terrain.height_field_raw
 
             env_origin_x = (i + 0.5) * self.env_length
             env_origin_y = (j + 0.5) * self.env_width
-            x1 = int((self.env_length/2. - 1) / self.horizontal_scale)
-            x2 = int((self.env_length/2. + 1) / self.horizontal_scale)
-            y1 = int((self.env_width/2. - 1) / self.horizontal_scale)
-            y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
-            env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
-            self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
+            x1 = int((self.env_length / 2. - 1) / self.horizontal_scale)
+            x2 = int((self.env_length / 2. + 1) / self.horizontal_scale)
+            y1 = int((self.env_width / 2. - 1) / self.horizontal_scale)
+            y2 = int((self.env_width / 2. + 1) / self.horizontal_scale)
+            self.env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * self.vertical_scale
+            self.env_origins[i, j] = [env_origin_x, env_origin_y, self.env_origin_z]
 
-    def curiculum(self, num_robots, num_terrains, num_levels):
+
+    def curiculum_mania(self, num_robots, num_terrains, num_levels):
         num_robots_per_map = int(num_robots / num_terrains)
         left_over = num_robots % num_terrains
-        idx = 0
         for j in range(num_terrains):
             for i in range(num_levels):
                 terrain = SubTerrain("terrain",
@@ -614,29 +734,13 @@ class Terrain:
                                     vertical_scale=self.vertical_scale,
                                     horizontal_scale=self.horizontal_scale)
                 difficulty = i / num_levels
-                choice = j / num_terrains
 
-                slope = difficulty * 0.4
-                step_height = 0.05 + 0.175 * difficulty
-                discrete_obstacles_height = 0.025 + difficulty * 0.15
-                stepping_stones_size = 2 - 1.8 * difficulty
-                if choice < self.proportions[0]:
-                    if choice < 0.05:
-                        slope *= -1
-                    pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-                elif choice < self.proportions[1]:
-                    if choice < 0.15:
-                        slope *= -1
-                    pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-                    random_uniform_terrain(terrain, min_height=-0.1, max_height=0.1, step=0.025, downsampled_scale=0.2)
-                elif choice < self.proportions[3]:
-                    if choice<self.proportions[2]:
-                        step_height *= -1
-                    pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
-                elif choice < self.proportions[4]:
-                    discrete_obstacles_terrain(terrain, discrete_obstacles_height, 1., 2., 40, platform_size=3.)
-                else:
-                    stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=0.1, max_height=0., platform_size=3.)
+                slope = difficulty * 0.1
+                height = 0.003 + 0.5* difficulty
+                step = 0.01 + 0.0025 * difficulty
+
+                random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step, downsampled_scale=0.2)
+
 
                 # Heightfield coordinate system
                 start_x = self.border + i * self.length_per_env_pixels
@@ -657,6 +761,313 @@ class Terrain:
                 y2 = int((self.env_width/2. + 1) / self.horizontal_scale)
                 env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*self.vertical_scale
                 self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
+
+    def curiculum(self, num_robots, num_terrains, num_levels):
+        num_robots_per_map = int(num_robots / num_terrains)
+        left_over = num_robots % num_terrains
+        idx = 0
+        for j in range(num_terrains):
+            for i in range(num_levels):
+                terrain = SubTerrain("terrain",
+                                     width=self.width_per_env_pixels,
+                                     length=self.width_per_env_pixels,
+                                     vertical_scale=self.vertical_scale,
+                                     horizontal_scale=self.horizontal_scale)
+                difficulty = i / num_levels
+                choice = j / num_terrains
+
+                slope = difficulty * 0.4
+                step_height = 0.05 + 0.175 * difficulty
+                discrete_obstacles_height = 0.025 + difficulty * 0.15
+                stepping_stones_size = 2 - 1.8 * difficulty
+
+                slope = 0.0 + difficulty * 0.1
+                height = 0.003 + 0.025 * difficulty
+                step = 0.01 + 0.0025 * difficulty
+
+                random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step, downsampled_scale=0.2)
+
+                if choice < self.proportions[0]:
+                    random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step, downsampled_scale=0.2)
+                elif choice < self.proportions[1]:
+                    random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step, downsampled_scale=0.2)
+                elif choice < self.proportions[3]:
+                    random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step,
+                                           downsampled_scale=0.2)
+                elif choice < self.proportions[4]:
+                    random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step,
+                                           downsampled_scale=0.2)
+                else:
+                    random_uniform_terrain(terrain, min_height=-height, max_height=height, step=step,
+                                           downsampled_scale=0.2)
+
+                # Heightfield coordinate system
+                start_x = self.border + i * self.length_per_env_pixels
+                end_x = self.border + (i + 1) * self.length_per_env_pixels
+                start_y = self.border + j * self.width_per_env_pixels
+                end_y = self.border + (j + 1) * self.width_per_env_pixels
+                self.height_field_raw[start_x: end_x, start_y:end_y] = terrain.height_field_raw
+
+                robots_in_map = num_robots_per_map
+                if j < left_over:
+                    robots_in_map += 1
+
+                env_origin_x = (i + 0.5) * self.env_length
+                env_origin_y = (j + 0.5) * self.env_width
+                x1 = int((self.env_length / 2. - 1) / self.horizontal_scale)
+                x2 = int((self.env_length / 2. + 1) / self.horizontal_scale)
+                y1 = int((self.env_width / 2. - 1) / self.horizontal_scale)
+                y2 = int((self.env_width / 2. + 1) / self.horizontal_scale)
+                env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * self.vertical_scale
+                self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
+
+
+############# Filetr Class ####################
+
+import collections
+from absl import logging
+import numpy as np
+from scipy.signal import butter
+
+ACTION_FILTER_ORDER = 2
+ACTION_FILTER_LOW_CUT = 0.0
+ACTION_FILTER_HIGH_CUT = 4.0
+
+class ActionFilter(object):
+  """Implements a generic lowpass or bandpass action filter."""
+
+  def __init__(self, a, b, order, num_joints, ftype='lowpass',num_envs=None):
+    """Initializes filter.
+
+    Either one per joint or same for all joints.
+
+    Args:
+      a: filter output history coefficients
+      b: filter input coefficients
+      order: filter order
+      num_joints: robot DOF
+      ftype: filter type. 'lowpass' or 'bandpass'
+    """
+    self.num_joints = num_joints
+    self.num_envs = num_envs
+    self.env_ids = None
+
+
+
+    if isinstance(a, list):
+      a = torch.tensor(a).to(self.device)
+      b = torch.tensor(b).to(self.device)
+      self.a = a
+      self.b = b
+    else:
+      self.a = [a]
+      self.b = [b]
+
+    # Either a set of parameters per joint must be specified as a list
+    # Or one filter is applied to every joint
+    if not ((len(self.a) == len(self.b) == num_joints) or (
+        len(self.a) == len(self.b) == 1)):
+      raise ValueError('Incorrect number of filter values specified')
+
+    # Normalize by a[0]
+
+    for i in range(len(self.a)):
+      self.b[i] = self.b[i]/self.a[i][0]
+      self.a[i] = self.a[i]/self.a[i][0]
+
+    check1 = a
+    check2= b
+
+
+    # Convert single filter to same format as filter per joint
+    if len(self.a) == 1:
+
+      #pybullet cpode
+      # self.a = self.a  * num_joints
+      # self.b *= num_joints
+
+      self.a = torch.unsqueeze(self.a,0).expand(num_envs, num_joints,self.a.shape[1])
+      self.b = torch.unsqueeze(self.b, 0).expand(num_envs,num_joints, self.b.shape[1])
+
+    # self.a = torch.stack(self.a)
+    # self.b = torch.stack(self.b)
+
+    if ftype == 'bandpass':
+      assert len(self.b[0]) == len(self.a[0]) == 2 * order + 1
+      self.hist_len = 2 * order
+    elif ftype == 'lowpass':
+      #assert len(self.b[0]) == len(self.a[0]) == order + 1 -- pybulet code
+      assert self.a.shape[2] == self.a.shape[2] == order + 1
+      self.hist_len = order
+    else:
+      raise ValueError('%s filter type not supported' % (ftype))
+
+    logging.info('Filter shapes: a: %s, b: %s', self.a.shape, self.b.shape)
+    logging.info('Filter type:%s', ftype)
+
+    self.yhist = collections.deque(maxlen=self.hist_len)
+    self.xhist = collections.deque(maxlen=self.hist_len)
+
+    # TODO once reset_term() is done replay reset() as simply num_envs = env_ids at the start. Hence for all envs to rest when the episode terminates
+    self.reset()
+
+  def reset(self):
+    """Resets the history buffers to 0."""
+
+    self.yhist.clear()
+    self.xhist.clear()
+
+    for _ in range(self.hist_len):
+        self.yhist.appendleft(torch.zeros((self.num_envs,self.num_joints, 1)).to(self.device))
+        self.xhist.appendleft(torch.zeros((self.num_envs,self.num_joints, 1)).to(self.device))
+
+
+  def reset_term(self, envs_id):
+
+    """Resets the history buffers of env_ids to 0."""
+
+    self.env_ids = envs_id
+
+
+    # TODO delete entries of the env to be reset
+
+    del self.yhist[self.envs_id,:,:]
+    del self.xhist[self.envs_id,:,:]
+
+   # TODO append zeros to reset envs
+
+    for _ in range(self.hist_len):
+        self.yhist[self.envs_id,:,:].appendleft(torch.zeros((len(self.envs_id),self.num_joints, 1)).to(self.device))
+        self.xhist[self.envs_id,:,:].appendleft(torch.zeros((len(self.envs_id),self.num_joints, 1)).to(self.device))
+
+
+
+  def filter(self, x):
+    """Returns filtered x."""
+    #print(x.shape)
+    xs = torch.cat(list(self.xhist), axis=-1).to(self.device)
+    ys = torch.cat(list(self.yhist), axis=-1).to(self.device)
+
+
+    y = torch.multiply(x, self.b[:,:, 0]) + torch.sum(
+        torch.multiply(xs, self.b[:,:, 1:]), axis=-1) - torch.sum(
+            torch.multiply(ys, self.a[:,:, 1:]), axis=-1)
+
+
+
+    self.xhist.appendleft(x.reshape((self.num_envs,self.num_joints, 1))) #check .copy()
+    self.yhist.appendleft(y.reshape((self.num_envs,self.num_joints, 1)))
+
+    #pass right shape back to isaac
+    y_pass = (torch.unsqueeze(y, 0)).to(torch.float32)
+
+    return y_pass
+
+
+  def init_history(self, x):
+    #x = torch.unsqueeze(x, axis=-1).to(self.device)
+    x = torch.unsqueeze(x, axis=-1).to(self.device)
+    for i in range(self.hist_len):
+      self.xhist[i] = x
+      self.yhist[i] = x
+    return torch.ones(self.num_envs).to(self.device)
+
+
+class ActionFilterButter(ActionFilter):
+  """Butterworth filter."""
+
+  def __init__(self,
+               lowcut=None,
+               highcut=None,
+               sampling_rate=None,
+               order=ACTION_FILTER_ORDER,
+               num_joints=None,
+               device="cpu",
+               num_envs = None):
+    """Initializes a butterworth filter.
+
+    Either one per joint or same for all joints.
+
+    Args:
+      lowcut: list of strings defining the low cutoff frequencies.
+        The list must contain either 1 element (same filter for all joints)
+        or num_joints elements
+        0 for lowpass, > 0 for bandpass. Either all values must be 0
+        or all > 0
+      highcut: list of strings defining the high cutoff frequencies.
+        The list must contain either 1 element (same filter for all joints)
+        or num_joints elements
+        All must be > 0
+      sampling_rate: frequency of samples in Hz
+      order: filter order
+      num_joints: robot DOF
+    """
+    self.lowcut = ([float(x) for x in lowcut]
+                   if lowcut is not None else [ACTION_FILTER_LOW_CUT])
+    self.highcut = ([float(x) for x in highcut]
+                    if highcut is not None else [ACTION_FILTER_HIGH_CUT])
+
+    self.device = device
+    if len(self.lowcut) != len(self.highcut):
+      raise ValueError('Number of lowcut and highcut filter values should '
+                       'be the same')
+
+    if sampling_rate is None:
+      raise ValueError('sampling_rate should be provided.')
+
+    if num_joints is None:
+      raise ValueError('num_joints should be provided.')
+
+    if np.any(self.lowcut):
+      if not np.all(self.lowcut):
+        raise ValueError('All the filters must be of the same type: '
+                         'lowpass or bandpass')
+      self.ftype = 'bandpass'
+    else:
+      self.ftype = 'lowpass'
+
+    a_coeffs = []
+    b_coeffs = []
+    for i, (l, h) in enumerate(zip(self.lowcut, self.highcut)):
+      if h <= 0.0:
+        raise ValueError('Highcut must be > 0')
+
+      b, a = self.butter_filter(l, h, sampling_rate, order)
+      logging.info(
+          'Butterworth filter: joint: %d, lowcut: %f, highcut: %f, '
+          'sampling rate: %d, order: %d, num joints: %d', i, l, h,
+          sampling_rate, order, num_joints)
+      b_coeffs.append(b)
+      a_coeffs.append(a)
+
+    super(ActionFilterButter, self).__init__(
+        a_coeffs, b_coeffs, order, num_joints, self.ftype, num_envs)
+
+  def butter_filter(self, lowcut, highcut, fs, order=5):
+    """Returns the coefficients of a butterworth filter.
+
+    If lowcut = 0, the function returns the coefficients of a low pass filter.
+    Otherwise, the coefficients of a band pass filter are returned.
+    Highcut should be > 0
+
+    Args:
+      lowcut: low cutoff frequency
+      highcut: high cutoff frequency
+      fs: sampling rate
+      order: filter order
+    Return:
+      b, a: parameters of a butterworth filter
+    """
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    if low:
+      b, a = butter(order, [low, high], btype='band')
+    else:
+      b, a = butter(order, [high], btype='low')
+    return b, a
+
+
 
 
 @torch.jit.script
