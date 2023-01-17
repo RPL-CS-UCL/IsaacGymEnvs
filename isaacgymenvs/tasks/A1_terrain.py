@@ -926,19 +926,17 @@ class ActionFilter(object):
 
     """Resets the history buffers of env_ids to 0."""
 
-    self.env_ids = envs_id
-
 
     # TODO delete entries of the env to be reset
 
-    del self.yhist[self.envs_id,:,:]
-    del self.xhist[self.envs_id,:,:]
+    del self.yhist[envs_id,:,:]
+    del self.xhist[envs_id,:,:]
 
    # TODO append zeros to reset envs
 
     for _ in range(self.hist_len):
-        self.yhist[self.envs_id,:,:].appendleft(torch.zeros((len(self.envs_id),self.num_joints, 1)).to(self.device))
-        self.xhist[self.envs_id,:,:].appendleft(torch.zeros((len(self.envs_id),self.num_joints, 1)).to(self.device))
+        self.yhist[envs_id,:,:].appendleft(torch.zeros((len(envs_id),self.num_joints, 1)).to(self.device))
+        self.xhist[envs_id,:,:].appendleft(torch.zeros((len(envs_id),self.num_joints, 1)).to(self.device))
 
 
 
