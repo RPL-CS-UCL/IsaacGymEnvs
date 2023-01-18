@@ -172,6 +172,7 @@ class A1Terrain(VecTask):
         self.init_done = True
 
         self.home_dir = os.path.expanduser('~')
+        self.folder_dir = os.path.join(self.home_dir, 'IsaacGymEnvs')
         self.NN_path = os.path.join(self.home_dir, 'IsaacGymEnvs/network_extractor')
 
 
@@ -414,13 +415,13 @@ class A1Terrain(VecTask):
 
         if self.save_data:
             error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
-            self.save_footstep.append(self.sim_contacts)
-            self.save_ref_cont.append(self.desired_mpc)
+            #self.save_footstep.append(self.feet_contact)
+            #self.save_ref_cont.append(self.desired_mpc)
             self.save_com_vel.append(self.base_lin_vel)
             self.save_torques.append(self.torques)
-            self.save_pos.append(self.hip_sim)
-            self.save_period.append(torch.mean(self._gait_period(),dim=-1))
-            check = self.save_period
+            #self.save_pos.append(self.hip_sim)
+            #self.save_period.append(torch.mean(self._gait_period(),dim=-1))
+            #check = self.save_period
 
 
     def _get_reward_foot_air_time(self):
@@ -440,9 +441,9 @@ class A1Terrain(VecTask):
         return knee_reward
 
     def _get_foot_contact_reward(self):
-        feet_contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        self.feet_contact = self.contact_forces[:, self.feet_indices, 2] > 1.
         #feet_contact_filter = torch.logical_or(feet_contact,self.last_contacts)
-        feet_contact_flipped = ~feet_contact
+        feet_contact_flipped = ~self.feet_contact
         feet_contact_reward = torch.sum(feet_contact_flipped,dim=1)
         return feet_contact_reward
 
@@ -517,7 +518,7 @@ class A1Terrain(VecTask):
         self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
 
         # TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts
-        self.action_filter.reset_term(env_ids)
+        #self.action_filter.reset_term(env_ids)
 
 
     def update_terrain_level(self, env_ids):
@@ -592,7 +593,7 @@ class A1Terrain(VecTask):
 
         # Save Data when testing
         if self.save_data:
-            self.testing_save_data(self.home_dir)
+            self.testing_save_data()
 
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         if len(env_ids) > 0:
@@ -617,14 +618,14 @@ class A1Terrain(VecTask):
         actions = torch.unsqueeze(actions, 0)
         return actions
 
-    def testing_save_data(self,pc):
-        save_vel = 'p09'
-        torch.save(self.save_footstep, '/home/'+pc+'/test_data/fc'+save_vel+'.pt')
-        torch.save(self.save_com_vel, '/home/'+pc+'/test_data/vel'+save_vel+'.pt')
-        torch.save(self.save_torques, '/home/'+pc+'/test_data/trq'+save_vel+'.pt')
-        torch.save(self.save_ref_cont, '/home/'+pc+'/test_data/ref'+save_vel+'.pt')
-        torch.save(self.save_pos, '/home/'+pc+'/test_data/pos'+save_vel+'.pt')
-        torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
+    def testing_save_data(self):
+        save_vel = str(self.commands[:,0].detach().cpu().numpy()[0])
+        #torch.save(self.save_footstep, self.folder_dir+'/saved_data/fc'+save_vel+'.pt')
+        torch.save(self.save_com_vel, self.folder_dir+'/saved_data/vel'+save_vel+'.pt')
+        torch.save(self.save_torques, self.folder_dir+'/saved_data/trq'+save_vel+'.pt')
+        #torch.save(self.save_ref_cont, self.folder_dir+'/saved_data/ref'+save_vel+'.pt')
+        #torch.save(self.save_pos, self.folder_dir+'/saved_data/pos'+save_vel+'.pt')
+        #torch.save(self.save_period, self.folder_dir+'/saved_data/period'+save_vel+'.pt')
 
     def _FilterAction(self, action):
         # initialize the filter history, since resetting the filter will fill

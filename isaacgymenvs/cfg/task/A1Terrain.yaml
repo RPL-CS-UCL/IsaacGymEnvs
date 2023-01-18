@@ -4,14 +4,14 @@ name: A1Terrain
 physics_engine: 'physx'
 
 env:
-  numEnvs: ${resolve_default:4096,${...num_envs}}
+  numEnvs: 1  #${resolve_default:4096,${...num_envs}}
   numObservations: 48
   numActions: 12
   envSpacing: 3.  # [m]
   enableDebugVis: False
 
   terrain:
-    terrainType: trimesh # none, plane, or trimesh
+    terrainType: plane # none, plane, or trimesh
     staticFriction: 1.0  # [-]
     dynamicFriction: 1.0  # [-]
     restitution: 0.        # [-]
@@ -46,35 +46,39 @@ env:
     decimation: 1
 
   defaultJointAngles:  # = target angles when action = 0.0
-    FR_hip_joint: -0.1    # [rad]
-    FR_thigh_joint: 0.8   # [rad]
-    FR_calf_joint: -1.5   # [rad]
 
-    FL_hip_joint: 0.1     # [rad]
-    FL_thigh_joint: 0.8   # [rad]
-    FL_calf_joint: -1.5   # [rad]
 
-    RR_hip_joint: -0.1    # [rad]
-    RR_thigh_joint: 1.0   # [rad]
-    RR_calf_joint: -1.5   # [rad]
+      FR_hip_joint: -0.1    # [rad]
+      FR_thigh_joint: 0.8   # [rad]
+      FR_calf_joint: -1.5   # [rad]
 
-    RL_hip_joint: 0.1     # [rad]
-    RL_thigh_joint: 1.0   # [rad]
-    RL_calf_joint: -1.5   # [rad]
+      FL_hip_joint: 0.1     # [rad]
+      FL_thigh_joint: 0.8   # [rad]
+      FL_calf_joint: -1.5   # [rad]
+
+      RR_hip_joint: -0.1    # [rad]
+      RR_thigh_joint: 1.0   # [rad]
+      RR_calf_joint: -1.5   # [rad]
+
+      RL_hip_joint: 0.1     # [rad]
+      RL_thigh_joint: 1.0   # [rad]
+      RL_calf_joint: -1.5   # [rad]
+
+
 
 
   urdfAsset:
     file: "urdf/A1/urdf/a1_unitree_modified_no_joint_dynamics.urdf"
-    #file: "urdf/A1/urdf/a1_unitree.urdf"
+    #file: "urdf/go1/urdf/go1.urdf"
     footName: foot # SHANK if collapsing fixed joint, FOOT otherwise
     kneeName: thigh
-    collapseFixedJoints: False
+    collapseFixedJoints: false
     fixBaseLink: false
     defaultDofDriveMode: 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
 
   learn:
     allowKneeContacts: true
-    actionFilter: true
+    actionFilter: false
     # rewards
     linearVelocityXYRewardScale: 1.1
     linearVelocityZRewardScale: -4.0
@@ -127,7 +131,7 @@ env:
   enableCameraSensors: False
 
   post_process:
-    save_data: false
+    save_data: true
     test_NN: false
 
 sim:
