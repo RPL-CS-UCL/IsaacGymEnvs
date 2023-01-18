@@ -33,6 +33,7 @@ from isaacgym.torch_utils import *
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from .base.vec_task import VecTask
+from utils.filters import ActionFilterButter
 
 import torch
 from typing import Tuple, Dict
@@ -516,8 +517,8 @@ class A1Terrain(VecTask):
             self.episode_sums[key][env_ids] = 0.
         self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
 
-        # TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts
-        self.action_filter.reset_term(env_ids)
+        # Reset the action filter queues
+        self.action_filter.reset_idx(env_ids)
 
 
     def update_terrain_level(self, env_ids):
@@ -552,11 +553,7 @@ class A1Terrain(VecTask):
             torques = self.action_scale * self.actions
 
             if self.cfg["env"]["learn"]["actionFilter"]:
-                #print(self.iteration_index)
-                #torques = self.action_filter.filter(torques.clone())
-                torques = self._FilterAction(torques)
-
-            actions = self.actions
+                torques = self.action_filter.filter(torques.clone())
 
             torques = torch.clip(torques, -self.clip_actions, self.clip_actions)
 
@@ -626,33 +623,33 @@ class A1Terrain(VecTask):
         torch.save(self.save_pos, '/home/'+pc+'/test_data/pos'+save_vel+'.pt')
         torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
 
-    def _FilterAction(self, action):
-        # initialize the filter history, since resetting the filter will fill
-        # the history with zeros and this can cause sudden movements at the start
-        # of each episode
+    # def _FilterAction(self, action):
+    #     # initialize the filter history, since resetting the filter will fill
+    #     # the history with zeros and this can cause sudden movements at the start
+    #     # of each episode
 
 
-        #TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts (where?)
+    #     #TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts (where?)
 
 
 
 
-       ##### Initilisaing history deque if its the first step
+    #    ##### Initilisaing history deque if its the first step
 
-        default_action = self.default_dof_pos
+    #     default_action = self.default_dof_pos
 
-        # I made a dummy tensor just so the init_history only gets called for the indeces of  self.iteration_index == 0,
-        # which is when each env resets
-        # The tensor is not used anywhere in the code
+    #     # I made a dummy tensor just so the init_history only gets called for the indeces of  self.iteration_index == 0,
+    #     # which is when each env resets
+    #     # The tensor is not used anywhere in the code
 
-        init_hist = torch.zeros(self.num_envs).to(self.device)
-        init_hist= torch.where(self.iteration_index == 0, self.action_filter.init_history(default_action), torch.zeros_like(self.iteration_index).to(self.device))
+    #     init_hist = torch.zeros(self.num_envs).to(self.device)
+    #     init_hist= torch.where(self.iteration_index == 0, self.action_filter.init_history(default_action), torch.zeros_like(self.iteration_index).to(self.device))
 
 
-        #### Filter the action from pre_physics step
-        filtered_action = self.action_filter.filter(action)
+    #     #### Filter the action from pre_physics step
+    #     filtered_action = self.action_filter.filter(action)
 
-        return filtered_action
+    #     return filtered_action
 
 
 # terrain generator
@@ -820,252 +817,6 @@ class Terrain:
                 y2 = int((self.env_width / 2. + 1) / self.horizontal_scale)
                 env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * self.vertical_scale
                 self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-
-
-############# Filetr Class ####################
-
-import collections
-from absl import logging
-import numpy as np
-from scipy.signal import butter
-
-ACTION_FILTER_ORDER = 2
-ACTION_FILTER_LOW_CUT = 0.0
-ACTION_FILTER_HIGH_CUT = 4.0
-
-class ActionFilter(object):
-  """Implements a generic lowpass or bandpass action filter."""
-
-  def __init__(self, a, b, order, num_joints, ftype='lowpass',num_envs=None):
-    """Initializes filter.
-
-    Either one per joint or same for all joints.
-
-    Args:
-      a: filter output history coefficients
-      b: filter input coefficients
-      order: filter order
-      num_joints: robot DOF
-      ftype: filter type. 'lowpass' or 'bandpass'
-    """
-    self.num_joints = num_joints
-    self.num_envs = num_envs
-    self.env_ids = None
-
-
-
-    if isinstance(a, list):
-      a = torch.tensor(a).to(self.device)
-      b = torch.tensor(b).to(self.device)
-      self.a = a
-      self.b = b
-    else:
-      self.a = [a]
-      self.b = [b]
-
-    # Either a set of parameters per joint must be specified as a list
-    # Or one filter is applied to every joint
-    if not ((len(self.a) == len(self.b) == num_joints) or (
-        len(self.a) == len(self.b) == 1)):
-      raise ValueError('Incorrect number of filter values specified')
-
-    # Normalize by a[0]
-
-    for i in range(len(self.a)):
-      self.b[i] = self.b[i]/self.a[i][0]
-      self.a[i] = self.a[i]/self.a[i][0]
-
-    check1 = a
-    check2= b
-
-
-    # Convert single filter to same format as filter per joint
-    if len(self.a) == 1:
-
-      #pybullet cpode
-      # self.a = self.a  * num_joints
-      # self.b *= num_joints
-
-      self.a = torch.unsqueeze(self.a,0).expand(num_envs, num_joints,self.a.shape[1])
-      self.b = torch.unsqueeze(self.b, 0).expand(num_envs,num_joints, self.b.shape[1])
-
-    # self.a = torch.stack(self.a)
-    # self.b = torch.stack(self.b)
-
-    if ftype == 'bandpass':
-      assert len(self.b[0]) == len(self.a[0]) == 2 * order + 1
-      self.hist_len = 2 * order
-    elif ftype == 'lowpass':
-      #assert len(self.b[0]) == len(self.a[0]) == order + 1 -- pybulet code
-      assert self.a.shape[2] == self.a.shape[2] == order + 1
-      self.hist_len = order
-    else:
-      raise ValueError('%s filter type not supported' % (ftype))
-
-    logging.info('Filter shapes: a: %s, b: %s', self.a.shape, self.b.shape)
-    logging.info('Filter type:%s', ftype)
-
-    self.yhist = collections.deque(maxlen=self.hist_len)
-    self.xhist = collections.deque(maxlen=self.hist_len)
-
-    # TODO once reset_term() is done replay reset() as simply num_envs = env_ids at the start. Hence for all envs to rest when the episode terminates
-    self.reset()
-
-  def reset(self):
-    """Resets the history buffers to 0."""
-
-    self.yhist.clear()
-    self.xhist.clear()
-
-    for _ in range(self.hist_len):
-        self.yhist.appendleft(torch.zeros((self.num_envs,self.num_joints, 1)).to(self.device))
-        self.xhist.appendleft(torch.zeros((self.num_envs,self.num_joints, 1)).to(self.device))
-
-
-  def reset_term(self, envs_id):
-
-    """Resets the history buffers of env_ids to 0."""
-
-
-    # TODO delete entries of the env to be reset
-
-    del self.yhist[envs_id,:,:]
-    del self.xhist[envs_id,:,:]
-
-   # TODO append zeros to reset envs
-
-    for _ in range(self.hist_len):
-        self.yhist[envs_id,:,:].appendleft(torch.zeros((len(envs_id),self.num_joints, 1)).to(self.device))
-        self.xhist[envs_id,:,:].appendleft(torch.zeros((len(envs_id),self.num_joints, 1)).to(self.device))
-
-
-
-  def filter(self, x):
-    """Returns filtered x."""
-    #print(x.shape)
-    xs = torch.cat(list(self.xhist), axis=-1).to(self.device)
-    ys = torch.cat(list(self.yhist), axis=-1).to(self.device)
-
-
-    y = torch.multiply(x, self.b[:,:, 0]) + torch.sum(
-        torch.multiply(xs, self.b[:,:, 1:]), axis=-1) - torch.sum(
-            torch.multiply(ys, self.a[:,:, 1:]), axis=-1)
-
-
-
-    self.xhist.appendleft(x.reshape((self.num_envs,self.num_joints, 1))) #check .copy()
-    self.yhist.appendleft(y.reshape((self.num_envs,self.num_joints, 1)))
-
-    #pass right shape back to isaac
-    y_pass = (torch.unsqueeze(y, 0)).to(torch.float32)
-
-    return y_pass
-
-
-  def init_history(self, x):
-    #x = torch.unsqueeze(x, axis=-1).to(self.device)
-    x = torch.unsqueeze(x, axis=-1).to(self.device)
-    for i in range(self.hist_len):
-      self.xhist[i] = x
-      self.yhist[i] = x
-    return torch.ones(self.num_envs).to(self.device)
-
-
-class ActionFilterButter(ActionFilter):
-  """Butterworth filter."""
-
-  def __init__(self,
-               lowcut=None,
-               highcut=None,
-               sampling_rate=None,
-               order=ACTION_FILTER_ORDER,
-               num_joints=None,
-               device="cpu",
-               num_envs = None):
-    """Initializes a butterworth filter.
-
-    Either one per joint or same for all joints.
-
-    Args:
-      lowcut: list of strings defining the low cutoff frequencies.
-        The list must contain either 1 element (same filter for all joints)
-        or num_joints elements
-        0 for lowpass, > 0 for bandpass. Either all values must be 0
-        or all > 0
-      highcut: list of strings defining the high cutoff frequencies.
-        The list must contain either 1 element (same filter for all joints)
-        or num_joints elements
-        All must be > 0
-      sampling_rate: frequency of samples in Hz
-      order: filter order
-      num_joints: robot DOF
-    """
-    self.lowcut = ([float(x) for x in lowcut]
-                   if lowcut is not None else [ACTION_FILTER_LOW_CUT])
-    self.highcut = ([float(x) for x in highcut]
-                    if highcut is not None else [ACTION_FILTER_HIGH_CUT])
-
-    self.device = device
-    if len(self.lowcut) != len(self.highcut):
-      raise ValueError('Number of lowcut and highcut filter values should '
-                       'be the same')
-
-    if sampling_rate is None:
-      raise ValueError('sampling_rate should be provided.')
-
-    if num_joints is None:
-      raise ValueError('num_joints should be provided.')
-
-    if np.any(self.lowcut):
-      if not np.all(self.lowcut):
-        raise ValueError('All the filters must be of the same type: '
-                         'lowpass or bandpass')
-      self.ftype = 'bandpass'
-    else:
-      self.ftype = 'lowpass'
-
-    a_coeffs = []
-    b_coeffs = []
-    for i, (l, h) in enumerate(zip(self.lowcut, self.highcut)):
-      if h <= 0.0:
-        raise ValueError('Highcut must be > 0')
-
-      b, a = self.butter_filter(l, h, sampling_rate, order)
-      logging.info(
-          'Butterworth filter: joint: %d, lowcut: %f, highcut: %f, '
-          'sampling rate: %d, order: %d, num joints: %d', i, l, h,
-          sampling_rate, order, num_joints)
-      b_coeffs.append(b)
-      a_coeffs.append(a)
-
-    super(ActionFilterButter, self).__init__(
-        a_coeffs, b_coeffs, order, num_joints, self.ftype, num_envs)
-
-  def butter_filter(self, lowcut, highcut, fs, order=5):
-    """Returns the coefficients of a butterworth filter.
-
-    If lowcut = 0, the function returns the coefficients of a low pass filter.
-    Otherwise, the coefficients of a band pass filter are returned.
-    Highcut should be > 0
-
-    Args:
-      lowcut: low cutoff frequency
-      highcut: high cutoff frequency
-      fs: sampling rate
-      order: filter order
-    Return:
-      b, a: parameters of a butterworth filter
-    """
-    nyq = 0.5 * fs
-    low = lowcut / nyq
-    high = highcut / nyq
-    if low:
-      b, a = butter(order, [low, high], btype='band')
-    else:
-      b, a = butter(order, [high], btype='low')
-    return b, a
-
-
 
 
 @torch.jit.script
