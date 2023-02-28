@@ -54,7 +54,7 @@ def load_sim(which_file):
     contacts05, torques05, vel05, ref05, pos05, period05 = _load_data(which_file+'05.pt')
     contacts07, torques07, vel07, ref07, pos07, period07 = _load_data(which_file+'07.pt')
     contacts08, torques08, vel08, ref08, pos08, period08 = _load_data(which_file+'08.pt')
-    # contacts09, torques09, vel09, ref09, pos09, period09 = _load_data(which_file+'09.pt')
+    contacts09, torques09, vel09, ref09, pos09, period09 = _load_data(which_file+'09.pt')
 
     contacts = [contacts01, contacts02, contacts03, contacts04, contacts05, contacts06,contacts07, contacts08]
     torques = [torques01, torques02, torques03, torques04,torques05, torques06, torques07, torques08]
@@ -62,7 +62,8 @@ def load_sim(which_file):
     periods = [period01, period02, period03, period04, period05, period06, period07, period08]
     vels = [vel01,vel02,vel03,vel04, vel05, vel06, vel07,vel08]
 
-    return contacts, torques, references, periods, vels
+    #return contacts, torques, references, periods, vels
+    return torques, contacts
 
 def load_mpc():
 

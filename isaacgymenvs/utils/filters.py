@@ -8,7 +8,7 @@ import torch
 
 ACTION_FILTER_ORDER = 2
 ACTION_FILTER_LOW_CUT = 0.0
-ACTION_FILTER_HIGH_CUT = 4.0
+ACTION_FILTER_HIGH_CUT = 60.0
 
 class TensorQueue:
 
@@ -203,7 +203,7 @@ class ActionFilterButter(ActionFilter):
     super(ActionFilterButter, self).__init__(
         a_coeffs, b_coeffs, order, num_joints, self.ftype, num_envs)
 
-  def butter_filter(self, lowcut, highcut, fs, order=5):
+  def butter_filter(self, lowcut, highcut, fs, order=2):
     """Returns the coefficients of a butterworth filter.
 
     If lowcut = 0, the function returns the coefficients of a low pass filter.

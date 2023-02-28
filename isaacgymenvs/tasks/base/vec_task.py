@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from typing import Dict, Any, Tuple
+import time
 
 import gym
 from gym import spaces
@@ -326,13 +327,18 @@ class VecTask(Env):
 
         action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
         # apply actions
+
+
         self.pre_physics_step(action_tensor)
+
 
         # step physics and render each frame
         for i in range(self.control_freq_inv):
             if self.force_render:
                 self.render()
             self.gym.simulate(self.sim)
+
+
 
         # to fix!
         if self.device == 'cpu':

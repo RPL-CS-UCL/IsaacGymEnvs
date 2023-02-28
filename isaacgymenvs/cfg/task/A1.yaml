@@ -1,6 +1,5 @@
 # used to create the object
-name: A1Terrain
-
+name: A1
 physics_engine: 'physx'
 
 env:
@@ -40,16 +39,12 @@ env:
     yaw: [-1.14, 1.14]    # min max [rad/s]
 
   control:
-    control_type: 'P' #'P' #'actuation_network'  # P: position, V: velocity, T: torques
-    # PD Drive parameters:
-    stiffness:  20.0  # [N*m/rad]
-    damping: 0.5  # [N*m*s/rad]
     # action scale: target troque = actionScale * action
-    actionScale: 0.3
+    actionScale: 9.0
     #clip actions for safety
     actionClip: 30
     # decimation: Number of control action updates @ sim DT per policy DT
-    decimation: 4
+    decimation: 1
 
   defaultJointAngles:  # = target angles when action = 0.0
 
@@ -85,6 +80,7 @@ env:
 
   learn:
     allowKneeContacts: true
+    actionFilter: false
     # rewards
     linearVelocityXYRewardScale: 1.1
     linearVelocityZRewardScale: -4.0
@@ -100,6 +96,10 @@ env:
     footcontactRewardScale: -0.05
     hipRewardScale: -0.25
     gaitRewardScale: -0.1
+    gaitPeriodRewardScale: -0.0005 #0.01
+    footstepReward: -0.01
+    gaitTrajectoryRewardScale: -0.001
+    pushRobot: true
 
     # normalization
     linearVelocityScale: 2.0
@@ -139,10 +139,9 @@ env:
   post_process:
     save_data: false
     test_NN: false
-    actionFilter: false
 
 sim:
-  dt: 0.02 # 1/500Hz
+  dt: 0.002 # 1/500Hz
   substeps: 1
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}

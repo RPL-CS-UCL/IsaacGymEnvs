@@ -57,6 +57,7 @@ class A1Terrain(VecTask):
         self.user_command_scale = self.cfg["env"]["learn"]["userCommandScale"]
 
         self.action_scale = self.cfg["env"]["control"]["actionScale"]
+        self.action_clip = self.cfg["env"]["control"]["actionClip"]
 
         # reward scales
         self.rew_scales = {}
@@ -97,6 +98,8 @@ class A1Terrain(VecTask):
         self.max_episode_length = int(self.max_episode_length_s/ self.dt + 0.5)
         self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
+        self.Kp = self.cfg["env"]["control"]["stiffness"]
+        self.Kd = self.cfg["env"]["control"]["damping"]
         self.curriculum = self.cfg["env"]["terrain"]["curriculum"]
 
         for key in self.rew_scales.keys():
@@ -178,10 +181,12 @@ class A1Terrain(VecTask):
 
 
         #initialise action filter
-        if self.cfg["env"]["learn"]["actionFilter"]:
+        if self.cfg["env"]["post_process"]["actionFilter"]:
             self.action_filter = ActionFilterButter(sampling_rate=1/(self.dt * self.decimation), num_joints=self.num_actions, device = self.device, num_envs= self.num_envs)
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
+
+        self.time_counter = 0
 
 
 
@@ -244,7 +249,7 @@ class A1Terrain(VecTask):
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
         asset_options.collapse_fixed_joints = self.cfg["env"]["urdfAsset"]["collapseFixedJoints"]
         asset_options.replace_cylinder_with_capsule = True
-        asset_options.flip_visual_attachments = True
+        asset_options.flip_visual_attachments = False
         asset_options.fix_base_link = self.cfg["env"]["urdfAsset"]["fixBaseLink"]
         asset_options.density = 0.001
         asset_options.angular_damping = 0.0
@@ -268,6 +273,7 @@ class A1Terrain(VecTask):
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
         body_names = self.gym.get_asset_rigid_body_names(A1_asset)
+
         self.dof_names = self.gym.get_asset_dof_names(A1_asset)
         foot_name = self.cfg["env"]["urdfAsset"]["footName"]
         knee_name = self.cfg["env"]["urdfAsset"]["kneeName"]
@@ -347,7 +353,7 @@ class A1Terrain(VecTask):
 
     def compute_reward(self):
 
-        target_height = 0.35
+        target_height = 0.30
 
         ### Reward: XY Linear Velocity (difference between base and input command)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
@@ -395,7 +401,7 @@ class A1Terrain(VecTask):
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate  +rew_knee_collision +rew_foot_contact +rew_gait + rew_hip  +rew_foot_air_time
+            rew_torque + rew_joint_acc + rew_action_rate + rew_knee_collision +rew_foot_contact +rew_gait + rew_hip  +rew_foot_air_time
 
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
@@ -416,9 +422,9 @@ class A1Terrain(VecTask):
 
         if self.save_data:
             error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
-            #self.save_footstep.append(self.feet_contact)
+            self.save_footstep.append(self.feet_contact)
             #self.save_ref_cont.append(self.desired_mpc)
-            self.save_com_vel.append(self.base_lin_vel)
+            #self.save_com_vel.append(self.base_lin_vel)
             self.save_torques.append(self.torques)
             #self.save_pos.append(self.hip_sim)
             #self.save_period.append(torch.mean(self._gait_period(),dim=-1))
@@ -490,18 +496,19 @@ class A1Terrain(VecTask):
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
+        #
         self.commands[env_ids, 0] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze()
         self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze()
         self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze()
         self.commands[env_ids] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.25).unsqueeze(1) # set small commands to zero
-        '''
+        # # #
+        #
 
+        # # #for testing
+        # self.commands[env_ids, 0] = 0.5
+        # self.commands[env_ids, 1] = 0.
+        # self.commands[env_ids, 2] = 0.
 
-        #for testing 
-        self.commands[env_ids, 0] = 0.9
-        self.commands[env_ids, 1] = 0.  
-        self.commands[env_ids, 2] = 0.
-        '''
 
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
@@ -520,7 +527,8 @@ class A1Terrain(VecTask):
 
 
         # Reset the action filter queues
-        self.action_filter.reset_idx(env_ids)
+        if self.cfg["env"]["post_process"]["actionFilter"]:
+            self.action_filter.reset_idx(env_ids)
 
 
     def update_terrain_level(self, env_ids):
@@ -534,7 +542,7 @@ class A1Terrain(VecTask):
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
 
     def push_robots(self):
-        self.root_states[:, 7:9] = torch_rand_float(-0.2, 0.7, (self.num_envs, 2), device=self.device) # lin vel x/y
+        self.root_states[:, 7:9] = torch_rand_float(-0.5, 0.5, (self.num_envs, 2), device=self.device) # lin vel x/y
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def pre_physics_step(self, actions):
@@ -544,7 +552,7 @@ class A1Terrain(VecTask):
 
 
         if testNN == True:
-            actionsNN = self.test_extracted_NN('traced_nd_cur_2.pt')
+            actionsNN = self.test_extracted_NN('traced_A1_NN_working.jit')
             self.actions = actionsNN.clone().to(self.device)
 
         else:
@@ -552,17 +560,28 @@ class A1Terrain(VecTask):
 
         for _ in range(self.decimation):
 
-            torques = self.action_scale * self.actions
-
-            if self.cfg["env"]["learn"]["actionFilter"]:
+            if self.cfg["env"]["post_process"]["actionFilter"]:
                 torques = self.action_filter.filter(torques.clone())
 
-            torques = torch.clip(torques, -self.clip_actions, self.clip_actions)
+            if self.cfg["env"]["control"]["control_type"] == 'P':
+                torques = torch.clip(self.Kp * (
+                            self.action_scale * self.actions + self.default_dof_pos - self.dof_pos) - self.Kd * self.dof_vel,
+                                     -self.action_clip, self.action_clip)
+
+            if self.cfg["env"]["control"]["control_type"] == 'T':
+                torques = self.action_scale * self.actions
+
+
+
+
+            torques = torch.clip(torques, -self.action_clip, self.action_clip)
+
 
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
             self.gym.simulate(self.sim)
             self.iteration_index += 1
+            self.time_counter +=1
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
@@ -607,49 +626,31 @@ class A1Terrain(VecTask):
 
     def test_extracted_NN(self,name_of_file):
         # take to ocnstructor
+
+
         NN_file = os.path.join(self.NN_path, name_of_file)
         load_NN = torch.jit.load(NN_file)
         load_NN.eval()
-
-
         actions = load_NN.forward(self.obs_buf)
+
         actions = torch.unsqueeze(actions, 0)
+        obs = self.obs_buf
+
         return actions
 
     def testing_save_data(self):
-        save_vel = str(self.commands[:,0].detach().cpu().numpy()[0])
-        #torch.save(self.save_footstep, self.folder_dir+'/saved_data/fc'+save_vel+'.pt')
-        torch.save(self.save_com_vel, self.folder_dir+'/saved_data/vel'+save_vel+'.pt')
-        torch.save(self.save_torques, self.folder_dir+'/saved_data/trq'+save_vel+'.pt')
-        #torch.save(self.save_ref_cont, self.folder_dir+'/saved_data/ref'+save_vel+'.pt')
-        #torch.save(self.save_pos, self.folder_dir+'/saved_data/pos'+save_vel+'.pt')
-        #torch.save(self.save_period, self.folder_dir+'/saved_data/period'+save_vel+'.pt')
 
-    # def _FilterAction(self, action):
-    #     # initialize the filter history, since resetting the filter will fill
-    #     # the history with zeros and this can cause sudden movements at the start
-    #     # of each episode
+        if self.time_counter < ( (self.max_episode_length_s / self.dt) -1):
+            save_vel = str(0.5)
+            torch.save(self.save_footstep, self.folder_dir+'/saved_data/fc'+save_vel+'.pt')
+            #torch.save(self.save_com_vel, self.folder_dir+'/saved_data/vel'+save_vel+'.pt')
+            torch.save(self.save_torques, self.folder_dir+'/saved_data/trq'+save_vel+'.pt')
+            #torch.save(self.save_ref_cont, self.folder_dir+'/saved_data/ref'+save_vel+'.pt')
+            #torch.save(self.save_pos, self.folder_dir+'/saved_data/pos'+save_vel+'.pt')
+            #torch.save(self.save_period, self.folder_dir+'/saved_data/period'+save_vel+'.pt')
 
-
-    #     #TODO reset the deque xhist and yhist before doing the assignemnt for each env that restarts (where?)
-
-
-
-
-    #    ##### Initilisaing history deque if its the first step
-
-    #     default_action = self.default_dof_pos
-
-    #     # I made a dummy tensor just so the init_history only gets called for the indeces of  self.iteration_index == 0,
-    #     # which is when each env resets
-    #     # The tensor is not used anywhere in the code
-
-    #     init_hist = torch.zeros(self.num_envs).to(self.device)
-    #     init_hist= torch.where(self.iteration_index == 0, self.action_filter.init_history(default_action), torch.zeros_like(self.iteration_index).to(self.device))
-
-
-    #     #### Filter the action from pre_physics step
-    #     filtered_action = self.action_filter.filter(action)
+        else:
+            print('Done Saving')
 
     #     return filtered_action
 

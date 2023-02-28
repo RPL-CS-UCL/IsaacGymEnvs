@@ -45,7 +45,7 @@ def generate_network():
     rel_path = os.path.dirname(os.path.realpath(__file__))
 
     #Get checkpoint and cfg paths
-    file_name = 'nd_cur_2'
+    file_name = 'A1_NN_working'
     checkpoint_path = os.path.join(path,'runs/A1Terrain/save_runs/'+file_name+'.pth')
     cfg_path = os.path.join(path, 'cfg/task/A1Terrain.yaml')
 
@@ -82,7 +82,7 @@ def generate_network():
     traced_script_module = torch.jit.trace(model,example_input)
 
     # Serializing the traced module
-    NN_file_name = 'traced_'+file_name+'.pt'
+    NN_file_name = 'traced_'+file_name+'.jit'
     save_path = os.path.join(rel_path,NN_file_name)
 
     traced_script_module.save(save_path)

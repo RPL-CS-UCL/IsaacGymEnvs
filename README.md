@@ -7,55 +7,69 @@
 
 This repository contains example RL environments for the NVIDIA Isaac Gym high performance environments described [in our NeurIPS 2021 Datasets and Benchmarks paper](https://openreview.net/forum?id=fgFBtYgJQX_)
 
+### Prerequisites
+1. Ubuntu 18.04 or 20.04.
+2. Python 3.6, 3.7 or 3.8.
+3. Minimum NVIDIA driver version:
+4. Linux: 470
 
-### Installation
 
-Download the Isaac Gym Preview 4 release from the [website](https://developer.nvidia.com/isaac-gym), then
-follow the installation instructions in the documentation. We highly recommend using a conda environment 
-to simplify set up.
 
+#### Create a conda environment
+Create a conda enviroment to install IsaacGymEnvs:
+```bash 
+ conda create --name isaacgymenvs python=3.8
+```
+
+#### Install Isaac Gym
+Instalation prerequisites:
+
+1. Download and install Isaac Gym Preview 4 from https://developer.nvidia.com/isaac-gym
+
+2. Open a terminal and navigate to the folder the file was downloaded:
+    control+T to open the terminal
+```bash
+   cd ~/Dowloads
+```
+
+3. unzip the file via:
+```bash
+  tar -xf IsaacGym_Preview_4_Package.tar.gz
+```
+
+4. Activate the conda environment to install the package:
+```bash
+    conda activate isaacgymenvs 
+```
+
+5. now install the python package
+```bash
+    cd isaacgym/python && pip install -e .
+```
+6. Verify the installation by try running an example:
 Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
-directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 4
-install instructions if you have any trouble running the samples.
-
-Once Isaac Gym is installed and samples work within your current python environment, install this repo:
+directory.
 
 ```bash
-pip install -e .
+    python examples/1080_balls_of_solitude.py
 ```
+7. For troubleshooting check docs `isaacgym/docs/index.html`
 
+### Install IsaacGymEnvs
 
-### Creating an environment
-
-We offer an easy-to-use API for creating preset vectorized environments. For more info on what a vectorized environment is and its usage, please refer to the Gym library [documentation](https://www.gymlibrary.dev/content/vectorising/#vectorized-environments).
-
-```python
-import isaacgym
-import isaacgymenvs
-import torch
-
-envs = isaacgymenvs.make(
-	seed=0, 
-	task="Ant", 
-	num_envs=2000, 
-	sim_device="cuda:0",
-	rl_device="cuda:0",
-)
-print("Observation space is", envs.observation_space)
-print("Action space is", envs.action_space)
-obs = envs.reset()
-for _ in range(20):
-	obs, reward, done, info = envs.step(
-		torch.rand((2000,)+envs.action_space.shape, device="cuda:0")
-	)
-```
-
-
-### Running the benchmarks
-
-To train your first policy, run this line:
-
+In the same conda environment navigate to your home directory and install the contents of this repo to get the IsaacGymEnvs package. 
 ```bash
+    cd ~
+    git clone https://github.com/RPL-CS-UCL/IsaacGymEnvs.git
+```
+Navigate inside the IsaacGymEnvs environment folder and install the package: 
+```bash
+cd ~/IsaacGymEnvs
+pip insrall e .
+```
+Verify installation by using the benchmark examples: 
+```bash
+cd ~/IsaacGymEnvs/isaacgymenvs
 python train.py task=Cartpole
 ```
 
@@ -130,6 +144,35 @@ Key arguments to the `train.py` script are:
 
 Hydra also allows setting variables inside config files directly as command line arguments. As an example, to set the discount rate for a rl_games training run, you can use `train.params.config.gamma=0.999`. Similarly, variables in task configs can also be set. For example, `task.env.enableDebugVis=True`.
 
+
+## Make your Own Tasks
+
+Source code for tasks can be found in `isaacgymenvs/tasks`. 
+
+Each task subclasses the `VecEnv` base class in `isaacgymenvs/base/vec_task.py`.
+
+To launch the new task from train.py, add your new task to the imports and isaacgym_task_map dict in the tasks __init__.py file.
+
+from tasks.my_new_task import MyNewTask
+```bash
+isaac_gym_task_map = {
+    'Anymal': Anymal,
+    # ...
+    'MyNewTask': MyNewTask,
+}
+```
+
+You will also need to create config files for task and training, which will be passed in dictionary form to the first config argument of your task. The task config, which goes in the corresponding config folder must have a name in the root matching the task name you put in the isaac_gym_task_map above. You should name your task config the same as in the Isaac Gym task map, eg. Anymal becomes Anymal.yaml.
+
+You also need a train config specifying RL Games arguments. This should go in the corresponding config folder. The file should have the postfix PPO, ie Anymal becomes AnymalPPO.yaml.
+
+Then, you can run your task with python train.py task=MyNewTask.
+
+Refer to [docs/framework.md](docs/framework.md) for how to create your own tasks.
+
+Full details on each of the tasks available can be found in the [RL examples documentation](docs/rl_examples.md).
+
+
 #### Hydra Notes
 
 Default values for each of these are found in the `isaacgymenvs/config/config.yaml` file.
@@ -142,15 +185,6 @@ In some places in the config you will find other variables referenced (for examp
  `num_actors: ${....task.env.numEnvs}`). Each `.` represents going one level up in the config hierarchy.
  This is documented fully [here](https://omegaconf.readthedocs.io/en/latest/usage.html#variable-interpolation).
 
-## Tasks
-
-Source code for tasks can be found in `isaacgymenvs/tasks`. 
-
-Each task subclasses the `VecEnv` base class in `isaacgymenvs/base/vec_task.py`.
-
-Refer to [docs/framework.md](docs/framework.md) for how to create your own tasks.
-
-Full details on each of the tasks available can be found in the [RL examples documentation](docs/rl_examples.md).
 
 ## Domain Randomization
 
