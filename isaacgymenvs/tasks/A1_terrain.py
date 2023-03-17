@@ -75,6 +75,8 @@ class A1Terrain(VecTask):
         self.rew_scales["knee_collision"] = self.cfg["env"]["learn"]["kneeCollisionRewardScale"]
         self.rew_scales["foot_contact"] = self.cfg["env"]["learn"]["footcontactRewardScale"]
         self.rew_scales["hip"] = self.cfg["env"]["learn"]["hipRewardScale"]
+        self.rew_scales["termination"] = self.cfg["env"]["learn"]["terimnationRewardScale"]
+
 
         #command ranges
         self.command_x_range = self.cfg["env"]["randomCommandVelocityRanges"]["linear_x"]
@@ -144,6 +146,7 @@ class A1Terrain(VecTask):
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.feet_air_time = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
+        self.feet_air_time_leg = torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         # joint positions offsets
@@ -157,7 +160,8 @@ class A1Terrain(VecTask):
         self.episode_sums = {"lin_vel_xy": torch_zeros(), "lin_vel_z": torch_zeros(), "ang_vel_z": torch_zeros(),
                              "ang_vel_xy": torch_zeros(), "orient": torch_zeros(), "torques": torch_zeros(), "joint_acc": torch_zeros(),
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(),
-                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(),"total_reward": torch_zeros()}
+                             "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(),
+                             "total_reward": torch_zeros(), "termination": torch_zeros()}
 
         #### testing data
         if self.save_data:
@@ -249,7 +253,7 @@ class A1Terrain(VecTask):
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
         asset_options.collapse_fixed_joints = self.cfg["env"]["urdfAsset"]["collapseFixedJoints"]
         asset_options.replace_cylinder_with_capsule = True
-        asset_options.flip_visual_attachments = False
+        asset_options.flip_visual_attachments = True
         asset_options.fix_base_link = self.cfg["env"]["urdfAsset"]["fixBaseLink"]
         asset_options.density = 0.001
         asset_options.angular_damping = 0.0
@@ -334,19 +338,33 @@ class A1Terrain(VecTask):
                     self.dof_names.index('RR_hip_joint')]
 
     def check_termination(self):
-        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.
+        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
 
-        self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf), self.reset_buf)
-    
+        # self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf),
+        #                              self.reset_buf)
+
+
+        #
+        # self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.,dim=-1)
+        # self.time_out_buf = self.progress_buf > self.max_episode_length  # no terminal reward for time-outs
+        # self.reset_buf |= self.time_out_buf
+        if self.cfg['env']['learn']['terminatedBasedHeight']:
+            self.body_height_buf = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1) \
+                                   < self.cfg['env']['learn']['terminalHeight']
+            self.reset_buf = torch.logical_or(self.body_height_buf, self.reset_buf)
+        self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf),
+                                     self.reset_buf)
+
+        #
     def compute_observations(self):
         self.obs_buf= torch.cat((self.base_lin_vel * self.lin_vel_scale,
                                   self.base_ang_vel * self.ang_vel_scale,
                                   self.projected_gravity * self.proj_grav_scale,
                                   self.commands * torch.tensor(self.user_command_scale, device=self.device),
-                                  self.dof_pos * self.dof_pos_scale,
+                                  self.dof_pos  * self.dof_pos_scale,
                                   self.dof_vel * self.dof_vel_scale,
                                   self.actions
                                   ), dim=-1)
@@ -376,7 +394,7 @@ class A1Terrain(VecTask):
         rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
 
         ### Reward: Joint Acceleration Penalty
-        rew_joint_acc = torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1) * self.rew_scales["joint_acc"]
+        rew_joint_acc = torch.sum(torch.square(self.last_dof_vel - self.dof_vel)/self.dt, dim=1) * self.rew_scales["joint_acc"]
 
         ### Reward: Base height Penalty
         rew_base_height = torch.square(self.root_states[:, 2] -  target_height) * self.rew_scales["base_height"]
@@ -386,6 +404,7 @@ class A1Terrain(VecTask):
 
         ### Reward: Foot Air Time
         rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
+        rew_foot_air_time_leg = self._get_reward_foot_air_time_leg() * self.rew_scales["air_time"]/(-1*10)
 
         ### Reward: Knee collision
         rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
@@ -399,9 +418,17 @@ class A1Terrain(VecTask):
         ### Reward: Hip
         rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
 
+
+
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate + rew_knee_collision +rew_foot_contact +rew_gait + rew_hip  +rew_foot_air_time
+            rew_torque + rew_joint_acc + rew_action_rate+ rew_foot_contact  + rew_hip + rew_gait +rew_foot_air_time + rew_knee_collision + rew_foot_air_time_leg
+
+        if self.cfg['env']['learn']['onlyPositive']:
+            self.rew_buf = torch.clip(self.rew_buf, min=0., max=None)
+
+        # add termination reward
+        self.rew_buf += self.rew_scales["termination"] * self.reset_buf * ~self.timeout_buf
 
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
@@ -420,6 +447,7 @@ class A1Terrain(VecTask):
         self.episode_sums["hip"] += rew_hip
         self.episode_sums["total_reward"] += self.rew_buf
 
+
         if self.save_data:
             error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
             self.save_footstep.append(self.feet_contact)
@@ -433,6 +461,8 @@ class A1Terrain(VecTask):
 
     def _get_reward_foot_air_time(self):
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+
+
         first_contact = (self.feet_air_time > 0.) * contact
         self.feet_air_time += self.dt
         rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
@@ -440,6 +470,17 @@ class A1Terrain(VecTask):
         self.feet_air_time *= ~contact
 
         return rew_airTime
+
+    def _get_reward_foot_air_time_leg(self):
+        contact = self.contact_forces[:, self.feet_indices[-1], 2] > 1.
+
+        first_contact = (self.feet_air_time_leg > 0.) * contact
+        self.feet_air_time_leg += self.dt
+        rew_airTime_leg = (self.feet_air_time_leg - 0.5) # reward only on first contact with the ground
+        rew_airTime_leg *= torch.norm(self.commands[:, :2], dim=1) > 0.1  # no reward for zero command
+        self.feet_air_time_leg *= ~contact
+
+        return rew_airTime_leg
 
     def _get_knee_collision_reward(self):
         knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
@@ -504,8 +545,8 @@ class A1Terrain(VecTask):
         # # #
         #
 
-        # # #for testing
-        # self.commands[env_ids, 0] = 0.5
+        # # # #for testing
+        # self.commands[env_ids, 0] = 0.0
         # self.commands[env_ids, 1] = 0.
         # self.commands[env_ids, 2] = 0.
 
@@ -513,6 +554,7 @@ class A1Terrain(VecTask):
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
+        self.feet_air_time_leg[env_ids] = 0.
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
 
@@ -552,8 +594,9 @@ class A1Terrain(VecTask):
 
 
         if testNN == True:
-            actionsNN = self.test_extracted_NN('traced_A1_NN_working.jit')
+            actionsNN = self.test_extracted_NN('traced_A1Terrain_200_4_plane.jit')
             self.actions = actionsNN.clone().to(self.device)
+            print('hey')
 
         else:
             self.actions = actions.clone().to(self.device)
@@ -563,15 +606,21 @@ class A1Terrain(VecTask):
             if self.cfg["env"]["post_process"]["actionFilter"]:
                 torques = self.action_filter.filter(torques.clone())
 
+
             if self.cfg["env"]["control"]["control_type"] == 'P':
                 torques = torch.clip(self.Kp * (
                             self.action_scale * self.actions + self.default_dof_pos - self.dof_pos) - self.Kd * self.dof_vel,
                                      -self.action_clip, self.action_clip)
 
+                # torques = self.p_gains * self.Kp_factors * (
+                #         self.joint_pos_target - self.dof_pos + self.motor_offsets) - self.d_gains * self.Kd_factors * self.dof_vel
+
+                # self.iteration_index += 1
+                # print("control counter" ,self.iteration_index)
+                # print(self.time_counter)
+
             if self.cfg["env"]["control"]["control_type"] == 'T':
-                torques = self.action_scale * self.actions
-
-
+                torques = self.actions  * self.action_scale
 
 
             torques = torch.clip(torques, -self.action_clip, self.action_clip)
@@ -580,7 +629,7 @@ class A1Terrain(VecTask):
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
             self.gym.simulate(self.sim)
-            self.iteration_index += 1
+            # self.iteration_index += 1
             self.time_counter +=1
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
@@ -595,7 +644,7 @@ class A1Terrain(VecTask):
         self.randomize_buf += 1
         self.common_step_counter += 1
 
-        if self.common_step_counter % self.push_interval == 0:
+        if self.common_step_counter % self.push_interval == 0 and self.cfg["env"]["learn"]["pushRobots"]:
             self.push_robots()
 
         # prepare quantities
@@ -634,13 +683,15 @@ class A1Terrain(VecTask):
         actions = load_NN.forward(self.obs_buf)
 
         actions = torch.unsqueeze(actions, 0)
-        obs = self.obs_buf
+
+
+
 
         return actions
 
     def testing_save_data(self):
 
-        if self.time_counter < ( (self.max_episode_length_s / self.dt) -1):
+        if self.time_counter < ((self.max_episode_length_s / self.cfg['sim']['dt']) -1):
             save_vel = str(0.5)
             torch.save(self.save_footstep, self.folder_dir+'/saved_data/fc'+save_vel+'.pt')
             #torch.save(self.save_com_vel, self.folder_dir+'/saved_data/vel'+save_vel+'.pt')

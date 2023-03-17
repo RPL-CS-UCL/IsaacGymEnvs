@@ -107,7 +107,7 @@ class Env(ABC):
 
         self.clip_obs = config["env"].get("clipObservations", np.Inf)
         self.clip_actions = config["env"].get("clipActions", np.Inf)
-
+        self.step_counter = torch.zeros(self.num_envs)
     @abc.abstractmethod 
     def allocate_buffers(self):
         """Create torch buffers for observations, rewards, actions dones and any additional data."""
@@ -320,6 +320,7 @@ class VecTask(Env):
             Observations, rewards, resets, info
             Observations are dict of observations (currently only one member called 'obs')
         """
+        self.step_counter +=1
 
         # randomize actions
         if self.dr_randomizations.get('actions', None):

@@ -97,6 +97,29 @@ python train.py task=Ant headless=True
 Ant may take a minute or two to train a policy you can run. When running headlessly, you 
 can stop it early using Control-C in the command line window.
 
+### Running the code
+To run the developed code:
+The baseline code is with position/torque control is task A1Terrain, the extension code included the velocity blnding is task A1. Fot the optimiser for teh gaits of A1 refer to the repo [motion-imitation](https://github.com/RPL-CS-UCL/motion-imittation.git)
+
+
+1. From the terminal:
+
+```bash
+python train.py task=A1Terrain headless=True
+```
+OR 
+
+```bash
+python train.py task=A1 headless=True
+```
+
+2. PYCHARM:
+It is usggested to run the code from PYCHARM IDE as it allows the configuration of many running files, and allows for training and testing at the same time. 
+In  the case that there is a missing library include the LD_LIBRARY_PATH in the Environment Prameters of the python configuration file. 
+e.g. LD_LIBRARY_PATH=/home/robohike/anaconda3/envs/isaacnew/lib
+
+You can choose whichever IDE works best. 
+
 ### Loading trained models // Checkpoints
 
 Checkpoints are saved in the folder `runs/EXPERIMENT_NAME/nn` where `EXPERIMENT_NAME` 
@@ -113,7 +136,7 @@ as an argument, along with the checkpoint name. To avoid rendering overhead, you
 also want to run with fewer environments using `num_envs=64`:
 
 ```bash
-python train.py task=Ant checkpoint=runs/Ant/nn/Ant.pth test=True num_envs=64
+python train.py task=Ant checkpoint=runs/A1/nn/Ant.pth test=True num_envs=64
 ```
 
 Note that If there are special characters such as `[` or `=` in the checkpoint names, 

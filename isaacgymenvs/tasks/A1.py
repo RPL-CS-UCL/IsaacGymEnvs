@@ -52,7 +52,9 @@ class A1(VecTask):
         self.dof_vel_scale = self.cfg["env"]["learn"]["dofVelocityScale"]
         #self.user_command_scale = self.cfg["env"]["learn"]["userCommandScale"]
         self.user_command_scale = torch.tensor([self.lin_vel_scale, self.lin_vel_scale, self.ang_vel_scale], requires_grad=False,).cuda()
+
         self.action_scale = self.cfg["env"]["control"]["actionScale"]
+        self.action_clip = self.cfg["env"]["control"]["actionClip"]
 
         # reward scales
         self.rew_scales = {}
@@ -115,6 +117,8 @@ class A1(VecTask):
         self.max_episode_length_s = self.cfg["env"]["learn"]["episodeLength_s"]
         self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
         self.allow_knee_contatcs = self.cfg["env"]["learn"]["allowKneeContacts"]
+        self.Kp = self.cfg["env"]["control"]["stiffness"]
+        self.Kd = self.cfg["env"]["control"]["damping"]
 
 
         self.push_interval = int(self.cfg["env"]["learn"]["pushInterval_s"] / self.dt + 0.5)
@@ -219,6 +223,7 @@ class A1(VecTask):
         self.check_if_end = torch.zeros(self.num_envs, self.num_legs, device=self.device)
         self.indx_update = torch.zeros(self.num_envs, self.num_legs, device=self.device)
         self.steping = True
+        self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
 
 
         ####### Storing MPC Values
@@ -328,7 +333,7 @@ class A1(VecTask):
 
     def _create_envs(self, num_envs, spacing, num_per_row):
         asset_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../assets')
-        asset_file = "urdf/unitree_a1/urdf/a1_unitree_modified.urdf"
+        asset_file = self.cfg["env"]["urdfAsset"]["file"]
 
         asset_options = gymapi.AssetOptions()
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
@@ -429,7 +434,7 @@ class A1(VecTask):
 
     def pre_physics_step(self, actions):
 
-        testNN = self.cfg.testNN
+        testNN = self.cfg["env"]["post_process"]["test_NN"]
 
         if testNN == True:
             actionsNN = self.test_extracted_NN()
@@ -440,9 +445,18 @@ class A1(VecTask):
 
         for _ in range(self.decimation):
 
-            torques = self.action_scale * self.actions
-            torques = torch.clip(torques, -self.clip_actions, self.clip_actions)
+            if self.cfg["env"]["post_process"]["actionFilter"]:
+                torques = self.action_filter.filter(torques.clone())
 
+            if self.cfg["env"]["control"]["control_type"] == 'P':
+                torques = torch.clip(self.Kp * (
+                        self.action_scale * self.actions + self.default_dof_pos - self.dof_pos) - self.Kd * self.dof_vel,
+                                     -self.action_clip, self.action_clip)
+
+            if self.cfg["env"]["control"]["control_type"] == 'T':
+                torques = self.actions * self.action_scale
+
+            torques = torch.clip(torques, -self.action_clip, self.action_clip)
 
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(torques))
             self.torques = torques.view(self.torques.shape)
@@ -468,9 +482,10 @@ class A1(VecTask):
 
 
         #M: Push Robot
-        self.push_robot = False
-        if self.push_robot and self.common_step_counter % self.push_interval == 0:
+
+        if self.cfg["env"]["learn"]["pushRobots"] and self.common_step_counter % self.push_interval == 0:
             self.push_robots()
+
 
         # prepare quantities
         self.base_quat = self.root_states[:, 3:7]
@@ -558,7 +573,7 @@ class A1(VecTask):
 
 
         ### Reward: Foot Air Time
-        rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
+        # rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
         #print(rew_foot_air_time)
 
         ### Reward: Knee collision
@@ -571,16 +586,18 @@ class A1(VecTask):
         ### Reward: Gait
         rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
 
-        ### Reward: Hip
-        rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
-        #print(rew_hip[0])
+        # ### Reward: Hip
+        # rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
+        # #print(rew_hip[0])
 
 
 
         # total reward buffer
         self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate  +rew_knee_collision +rew_foot_contact +rew_gait + rew_hip  +rew_foot_air_time #+ rew_gait + rew_gait_period + rew_gait_trajectory
+            rew_torque + rew_joint_acc + rew_action_rate + rew_gait + rew_gait_period + rew_gait_trajectory
 
+
+        #  +rew_knee_collision +rew_foot_contact +rew_gait +rew_foot_air_time +
         # log episode reward sums
         self.episode_sums["lin_vel_xy"] += rew_lin_vel_xy
         self.episode_sums["ang_vel_z"] += rew_ang_vel_z
@@ -592,16 +609,16 @@ class A1(VecTask):
         self.episode_sums["base_height"] += rew_joint_acc
         self.episode_sums["action_rate"] += rew_action_rate
 
-        # self.episode_sums["gait_period"] += rew_gait_period
-        # self.episode_sums["gait"] += rew_gait
-        # self.episode_sums["gait_trajectory"] += rew_gait_trajectory
+        self.episode_sums["gait_period"] += rew_gait_period
+        self.episode_sums["gait"] += rew_gait
+        self.episode_sums["gait_trajectory"] += rew_gait_trajectory
 
 
-        self.episode_sums["air_time"] += rew_foot_air_time
+        # self.episode_sums["air_time"] += rew_foot_air_time
         self.episode_sums["knee_collision"] += rew_knee_collision
         self.episode_sums["foot_contact"] += rew_foot_contact
         self.episode_sums["gait"] += rew_gait
-        self.episode_sums["hip"] += rew_hip
+        # self.episode_sums["hip"] += rew_hip
 
         if self.testing:
             error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
@@ -652,15 +669,23 @@ class A1(VecTask):
 
     def _check_termination(self):
 
-        reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.
-        time_out = self.progress_buf > self.max_episode_length
-        reset_buf = reset | time_out
+        # reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 0.
+        # time_out = self.progress_buf > self.max_episode_length
+        # reset_buf = reset | time_out
+        #
+        # if not self.allow_knee_contatcs:
+        #     reset = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
+        #     reset_buf = reset | reset_buf
+        #
+        # self.reset_buf = reset_buf
 
-        if not self.allow_knee_contatcs:
-            reset = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
-            reset_buf = reset | reset_buf
+        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.
+        if not self.allow_knee_contacts:
+            knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
+            self.reset_buf |= torch.any(knee_contact, dim=1)
 
-        self.reset_buf = reset_buf
+        self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf),
+                                     self.reset_buf)
 
     #M: Push Robot
     def push_robots(self):
@@ -685,16 +710,7 @@ class A1(VecTask):
 
 
     ############################# Reward Functions Definition
-    def _get_reward_foot_air_time(self):
-  
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-        first_contact = (self.feet_air_time > 0.) * contact
-        self.feet_air_time += self.dt
-        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
-        self.feet_air_time *= ~contact
 
-        return rew_airTime
 
     def _get_knee_collision_reward(self):
         knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
@@ -710,11 +726,6 @@ class A1(VecTask):
         return feet_contact_reward
 
 
-    def _get_reward_hip(self):
-        
-        hip_reward = torch.sum(torch.abs(self.default_dof_pos[:,self.H] - self.dof_pos[:,self.H]),dim=1)
-
-        return hip_reward
 
     def _get_gait_period_reward(self):
 
@@ -811,11 +822,11 @@ class A1(VecTask):
         """
 
         self.ind = torch.randint(0, self.num_vel, (len(env_ids),)).cuda(0)
-        # self.commands[env_ids, 0] = torch.index_select(self.velocities, 0, self.ind)
+        self.commands[env_ids, 0] = torch.index_select(self.velocities, 0, self.ind)
         #
-        self.commands[env_ids, 0] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        # self.commands[env_ids, 0] = torch_rand_float(self.command_x_range[0], self.command_x_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        # self.commands[env_ids, 1] = torch_rand_float(self.command_y_range[0], self.command_y_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
+        # self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
 
         # to test
         # self.commands[env_ids, 0] = 0.5
@@ -842,11 +853,10 @@ class A1(VecTask):
     #################### MPC Functions
     def load_mpc_390(self):
         # load data from MPC
-        path = "/home/robohike/motion_imitation/2500/"
+        path = "/home/robohike/motion_imitation/10000/"
 
         # load MPC gaits
         ########### tripod
-
 
         with np.load(path + "foot_contacts1.npz") as ct_tp_01:
             self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
@@ -961,8 +971,8 @@ class A1(VecTask):
             self.f_tt_08 = f_tt_08["foot_pos"]  # [n_time_steps, feet indices, xyz]
         with np.load(path + "foot9.npz") as f_tt_09:
             self.f_tt_09 = f_tt_09["foot_pos"]
-        with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
-            self.f_tt_10 = f_tt_10["footsteps"]
+        # with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
+        #     self.f_tt_10 = f_tt_10["footsteps"]
 
     def _gait_period(self):
         '''Check how long it took for the reference foot to complete a full gait cycle/period.'''
