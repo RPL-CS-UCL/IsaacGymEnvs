@@ -99,7 +99,7 @@ can stop it early using Control-C in the command line window.
 
 ### Running the code
 To run the developed code:
-The baseline code is with position/torque control is task A1Terrain, the extension code included the velocity blnding is task A1. Fot the optimiser for teh gaits of A1 refer to the repo [motion-imitation](https://github.com/RPL-CS-UCL/motion-imittation.git)
+The baseline code is with position/torque control is task A1Terrain, the extension code included the velocity blnding is task A1. Fot the optimiser for teh gaits of A1 refer to the repo [motion-imitation](https://github.com/RPL-CS-UCL/mpc_optimiser.git)
 
 
 1. From the terminal:
@@ -119,6 +119,17 @@ In  the case that there is a missing library include the LD_LIBRARY_PATH in the 
 e.g. LD_LIBRARY_PATH=/home/robohike/anaconda3/envs/isaacnew/lib
 
 You can choose whichever IDE works best. 
+
+### Pybullet Interface
+A pybullet interface to check the extracted network is given in the following repo [quad_controller](https://github.com/RPL-CS-UCL/quadrupedal_controllers.git)
+This can be found under 
+quadrupedal_controllers/controllers/nn/ and by running the script run_nn_sim.py 
+
+### Sim2Real
+
+For sim to real trasnfer refer to the mania_dev branch of the repo [walk_these_ways](https://github.com/RPL-CS-UCL/walk-these-ways.git)
+
+
 
 ### Loading trained models // Checkpoints
 
