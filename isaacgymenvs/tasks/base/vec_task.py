@@ -51,11 +51,15 @@ SCREEN_CAPTURE_RESOLUTION = (1027, 768)
 
 def _create_sim_once(gym, *args, **kwargs):
     global EXISTING_SIM
+
     if EXISTING_SIM is not None:
+        gym.destroy_sim(EXISTING_SIM)
+        EXISTING_SIM = gym.create_sim(*args, **kwargs)
         return EXISTING_SIM
     else:
         EXISTING_SIM = gym.create_sim(*args, **kwargs)
-        return EXISTING_SIM
+    return EXISTING_SIM
+
 
 
 class Env(ABC):

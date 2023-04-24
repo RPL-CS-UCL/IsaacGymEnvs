@@ -44,6 +44,8 @@ class A1(VecTask):
     def __init__(self, cfg, rl_device, sim_device, graphics_device_id, headless, virtual_screen_capture, force_render):
 
         self.cfg = cfg
+
+
         
         # normalization
         self.lin_vel_scale = self.cfg["env"]["learn"]["linearVelocityScale"]
@@ -68,9 +70,19 @@ class A1(VecTask):
         self.rew_scales["base_height"] = self.cfg["env"]["learn"]["baseHeightRewardScale"]
         self.rew_scales["gait"] = self.cfg["env"]["learn"]["gaitRewardScale"]
         self.rew_scales["gait_period"] = self.cfg["env"]["learn"]["gaitPeriodRewardScale"]
-        self.rew_scales["gait_trajectory"] = self.cfg["env"]["learn"]["gaitTrajectoryRewardScale"]
         self.rew_scales["action_rate"] = self.cfg["env"]["learn"]["actionRateRewardScale"]
-        
+        self.rew_scales["gait_hip"] = self.cfg["env"]["learn"]["gaitTrajectoryHipRewardScale"]
+        self.rew_scales["gait_knee"] = self.cfg["env"]["learn"]["gaitTrajectoryKneeRewardScale"]
+        self.rew_scales["gait_foot"] = self.cfg["env"]["learn"]["gaitTrajectoryFootRewardScale"]
+
+        print('REWARD SCALES')
+        print('Gait Hip Trajectory Reward Scale', self.rew_scales["gait_hip"])
+        print('Gait Knee Trajectory Reward Scale', self.rew_scales["gait_knee"])
+        print('Gait Foot Trajectory Reward Scale', self.rew_scales["gait_foot"])
+        print('Gait Contacts Reward Scale', self.rew_scales["gait"])
+        print('Gait Period Reward Scale', self.rew_scales["gait_period"])
+        print('Lin vel', self.rew_scales["lin_vel_xy"])
+        print('Action Rate Reward Scale', self.rew_scales["action_rate"])
         
         self.rew_scales["air_time"] = self.cfg["env"]["learn"]["feetAirTimeRewardScale"]
         self.rew_scales["knee_collision"] = self.cfg["env"]["learn"]["kneeCollisionRewardScale"]
@@ -110,7 +122,8 @@ class A1(VecTask):
         self.height_samples = None
         self.custom_origins = False
 
-        self.testing = False
+
+        self.save_data = self.cfg["env"]["post_process"]["save_data"]
        
         self.decimation = self.cfg["env"]["control"]["decimation"]
         self.dt = self.decimation * self.cfg["sim"]["dt"]
@@ -127,9 +140,14 @@ class A1(VecTask):
         for key in self.rew_scales.keys():
             self.rew_scales[key] *= self.dt
 
+
+        self.sim = None
+
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device,
                          graphics_device_id=graphics_device_id, headless=headless,
                          virtual_screen_capture=virtual_screen_capture, force_render=force_render)
+
+
 
         if self.graphics_device_id != None:
             p = self.cfg["env"]["viewer"]["pos"]
@@ -137,6 +155,8 @@ class A1(VecTask):
             cam_pos = gymapi.Vec3(p[0], p[1], p[2])
             cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+
+        check = self.sim
 
         # get gym state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -175,7 +195,12 @@ class A1(VecTask):
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
+        self.sim_contacts = None
 
+        self.reward_sim = 0
+        self.reward_hip = 0
+        self.reward_knee = 0
+        self.reward_foot = 0
 
 
         for i in range(self.cfg["env"]["numActions"]):
@@ -191,7 +216,8 @@ class A1(VecTask):
                              "ang_vel_xy": torch_zeros(), "orient": torch_zeros(), "torques": torch_zeros(), "joint_acc": torch_zeros(),
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(),
                              "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(),
-                             "gait_period": torch_zeros(),"gait_trajectory": torch_zeros()}
+                             "gait_period": torch_zeros(),"gait_hip": torch_zeros(), "total_reward": torch_zeros(),
+                             "gait_knee": torch_zeros(), "gait_foot": torch_zeros()}
 
         #iteration counter
         self.iteration_index = torch.zeros(self.num_envs, device=self.device)
@@ -224,49 +250,65 @@ class A1(VecTask):
         self.indx_update = torch.zeros(self.num_envs, self.num_legs, device=self.device)
         self.steping = True
         self.allow_knee_contacts = self.cfg["env"]["learn"]["allowKneeContacts"]
+        self.allow_hip_contacts = self.cfg["env"]["learn"]["allowHipContacts"]
 
 
         ####### Storing MPC Values
 
-        ##Period
+        #Period
         self.load_periods = torch.tensor(np.array(
             [self.period1, self.period2, self.period3, self.period4, self.period5, self.period6, self.period7,
              self.period8, self.period9])).cuda(0)
 
         ## Gait Contacts
         self.load_gaits = torch.tensor(np.array(
-            [self.ct_tp_01, self.ct_tp_02, self.ct_tp_03, self.ct_tp_04, self.ct_tp_05, self.ct_tt_06, self.ct_tt_07,
-             self.ct_tt_08, self.ct_tt_09])).cuda(0)
+            [self.ct_tp_01[:, :], self.ct_tp_02[:, :], self.ct_tp_03[:, :], self.ct_tp_04[:, :], self.ct_tp_05[:, :], self.ct_tt_06[:, :], self.ct_tt_07[:, :],
+             self.ct_tt_08[:, :], self.ct_tt_09[:, :]])).cuda(0)
 
-        ## Positions
+
+        # Positions
         self.load_calf = torch.tensor(np.array(
             [self.calf1[:, :, :], self.calf2[:, :, :], self.calf3[:, :, :], self.calf4[:, :, :], self.calf5[:, :, :],
              self.calf6[:, :, :], self.calf7[:, :, :], self.calf8[:, :, :], self.calf9[:, :, :]])).cuda(0)
+
+
 
         self.load_hip = torch.tensor(np.array(
             [self.hip1[:, :, :], self.hip2[:, :, :], self.hip3[:, :, :], self.hip4[:, :, :], self.hip5[:, :, :],
              self.hip6[:, :, :], self.hip7[:, :, :], self.hip8[:, :, :], self.hip9[:, :, :]])).cuda(0)
 
+
+
         self.load_foot = torch.tensor(np.array(
             [self.f_tp_01[:, :, :], self.f_tp_02[:, :, :], self.f_tp_03[:, :, :], self.f_tp_04[:, :, :],
              self.f_tp_05[:, :, :], self.f_tt_06[:, :, :], self.f_tt_07[:, :, :], self.f_tt_08[:, :, :],
              self.f_tt_09[:, :, :]])).cuda(0)
-        
-        check = len(self.load_foot)
 
-        # velociy blending
+
         self.velocities = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]).cuda(0)
 
 
+        # #for testing
+        # self.load_periods = torch.tensor([self.period7] * 9).cuda(0)
+        # self.load_gaits = torch.tensor([self.ct_tt_07] * 9).cuda(0)
+        # self.load_calf = torch.tensor([self.calf7] * 9).cuda(0)
+        # self.load_hip = torch.tensor([self.hip7] * 9).cuda(0)
+        # self.load_foot = torch.tensor([self.f_tt_07]*9).cuda(0)
+        # self.velocities = torch.tensor([0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]).cuda(0)
+
+
+
         self.num_vel = len(self.velocities)
-        self.num_ts = len(self.ct_tp_02) +2
+        self.num_ts = len(self.ct_tp_02) + 2 #added two as had issues with dimensions not matching
         self.num_xyz = 3
 
+        ## load MPC data
         self.gaits= torch.cat((self.load_gaits, torch.ones(len(self.load_gaits),2,self.num_legs, device=self.device)), 1).to(torch.bool)
         self.calf = torch.cat((self.load_calf, torch.ones(len(self.load_hip),2,self.num_legs,self.num_xyz, device=self.device)), 1)
         self.hip = torch.cat((self.load_hip, torch.ones(len(self.load_hip), 2, self.num_legs,self.num_xyz, device=self.device)), 1)
         self.foot = torch.cat((self.load_foot, torch.ones(len(self.load_hip), 2, self.num_legs,self.num_xyz, device=self.device)), 1)
 
+        ## placeholders for post processing MPC data
         self.gait = torch.zeros(self.num_envs, self.num_ts, self.num_legs, dtype=torch.bool).cuda(0)
         self.period = torch.zeros(self.num_envs, self.num_legs, dtype=torch.float, device=self.device, requires_grad=False)
         self.hips = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz, dtype=torch.float64, device=self.device)
@@ -274,25 +316,33 @@ class A1(VecTask):
         self.feet = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz, dtype=torch.float64,device=self.device)
 
         self.enable_gait = torch.zeros(self.num_envs, self.num_legs, dtype=torch.bool, device=self.device)
+        self.enable_reward = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         #self.enable_trajectory = torch.zeros(3, self.num_envs, self.num_legs,self.num_xyz,  dtype=torch.bool, device=self.device )
 
         #### testing data
-        if self.testing:
+        if self.save_data:
             self.save_footstep = []
             self.save_ref_cont =[]
             self.save_torques = []
             self.save_com_vel = []
             self.save_pos = []
+            self.save_target_pos =[]
             self.save_period = []
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        check = 1
 
 
 
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
+
+
+        if self.sim != None:
+            self.gym.destroy_sim(self.sim)
+
+
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
+
 
         terrain_type = self.cfg["env"]["terrain"]["terrainType"]  # plane - flat terrain/no curiculum
 
@@ -372,10 +422,10 @@ class A1(VecTask):
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
 
         dof_props = self.gym.get_asset_dof_properties(A1_asset)
-        #for i in range(self.num_dof):
-            #dof_props['driveMode'][i] = self.cfg["env"]["control"]["driveMode"]
-            #dof_props['stiffness'][i] = self.cfg["env"]["control"]["stiffness"] #self.Kp
-            #dof_props['damping'][i] = self.cfg["env"]["control"]["damping"] #self.Kd
+        # for i in range(self.num_dof):
+        #     dof_props['driveMode'][i] = self.cfg["env"]["control"]["driveMode"]
+        #     dof_props['stiffness'][i] = self.cfg["env"]["control"]["stiffness"] #self.Kp
+        #     dof_props['damping'][i] = self.cfg["env"]["control"]["damping"] #self.Kd
 
         # Terrain: env origins
         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
@@ -411,13 +461,12 @@ class A1(VecTask):
                 rigid_shape_prop[s].friction = friction_buckets[i % num_buckets]
             self.gym.set_asset_rigid_shape_properties(A1_asset, rigid_shape_prop)
 
-
             A1_handle = self.gym.create_actor(env_ptr, A1_asset, start_pose, "A1", i, 1, 0)
             self.gym.set_actor_dof_properties(env_ptr, A1_handle, dof_props)
             self.gym.enable_actor_dof_force_sensors(env_ptr, A1_handle)
+
             self.envs.append(env_ptr)
             self.A1_handles.append(A1_handle)
-
 
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.A1_handles[0], feet_names[i])
@@ -434,10 +483,11 @@ class A1(VecTask):
 
     def pre_physics_step(self, actions):
 
+        ## Load and test the weights of pre-trained NN
         testNN = self.cfg["env"]["post_process"]["test_NN"]
 
         if testNN == True:
-            actionsNN = self.test_extracted_NN()
+            actionsNN = self.test_extracted_NN('traced_new_position.jit')
             self.actions= actionsNN.clone().to(self.device)
 
         else:
@@ -465,24 +515,21 @@ class A1(VecTask):
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
 
-
     def post_physics_step(self):
 
-        #
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
 
         self.progress_buf += 1
 
-        #M: Push Robot
+        #Update the counters
         self.common_step_counter += 1
         self.randomize_buf += 1
         self.iteration_index += 1
 
 
-        #M: Push Robot
-
+        #Push Robot
         if self.cfg["env"]["learn"]["pushRobots"] and self.common_step_counter % self.push_interval == 0:
             self.push_robots()
 
@@ -492,21 +539,19 @@ class A1(VecTask):
 
         it = self.iteration_index
 
-        check_or = self.base_quat
-        check_linvel = self.root_states[:, 7:10]
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
 
-        # Update the reset buffer
+        # Chcek of termination conditions are met
         self._check_termination()
 
         # Calculate the rewards
         self.compute_reward()
 
         # Save Data when testing
-        if self.testing:
+        if self.save_data:
             self.testing_save_data('robohike')
 
         # Reset the agents that need termination
@@ -518,7 +563,7 @@ class A1(VecTask):
         # Get observations
         self.compute_observations()
 
-        
+        # Store last actions and last joint velocity observations
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_actions[:] = self.actions[:]
 
@@ -562,19 +607,23 @@ class A1(VecTask):
 
         ''' Mania '''
 
-        # ##Reward: Gait
-        rew_gait= self._get_gait_reward() * self.rew_scales["gait"]
+        ### Reward: Gait
+        rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
+
 
         ##Reward: Gait Period
         rew_gait_period= self._get_gait_period_reward() * self.rew_scales["gait_period"]
 
         ##Reward: Gait Trajectory:
-        rew_gait_trajectory = self._get_gait_trajectory_reward() * self.rew_scales['gait_trajectory']
+        rew_gait_trajectory= self._get_gait_trajectory_reward()
+        rew_gait_hip = rew_gait_trajectory[0,:] * self.rew_scales["gait_hip"]
+        rew_gait_knee = rew_gait_trajectory[1, :] * self.rew_scales["gait_knee"]
+        rew_gait_foot = rew_gait_trajectory[2, :] * self.rew_scales["gait_foot"]
 
 
         ### Reward: Foot Air Time
-        # rew_foot_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
-        #print(rew_foot_air_time)
+        rew_feet_air_time = self._get_reward_foot_air_time() * self.rew_scales["air_time"]
+
 
         ### Reward: Knee collision
         rew_knee_collision = self._get_knee_collision_reward() * self.rew_scales["knee_collision"]
@@ -583,18 +632,21 @@ class A1(VecTask):
         ### Reward: Foot contact
         rew_foot_contact = self._get_foot_contact_reward() * self.rew_scales["foot_contact"]
 
-        ### Reward: Gait
-        rew_gait = self._get_gait_reward() * self.rew_scales["gait"]
 
-        # ### Reward: Hip
-        # rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
-        # #print(rew_hip[0])
+        ### Reward: Hip
+        #rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
+        #print(rew_hip[0])
 
 
+        # Total reward buffer
+        self.rew_buf =   rew_torque + rew_action_rate  + rew_gait_period + rew_gait_hip + rew_gait_knee + rew_gait_foot +rew_lin_vel_xy
 
-        # total reward buffer
-        self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-            rew_torque + rew_joint_acc + rew_action_rate + rew_gait + rew_gait_period + rew_gait_trajectory
+
+        # self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
+        #    rew_torque + rew_joint_acc + rew_action_rate + rew_gait_period
+
+        ## Enable reward only when there is first contact for accurate contact matching
+        # self.rew_buf = torch.where(self.enable_reward, self.rew_buf, torch.zeros_like(self.rew_buf))
 
 
         #  +rew_knee_collision +rew_foot_contact +rew_gait +rew_foot_air_time +
@@ -609,26 +661,40 @@ class A1(VecTask):
         self.episode_sums["base_height"] += rew_joint_acc
         self.episode_sums["action_rate"] += rew_action_rate
 
+        #Logging gait rewards
         self.episode_sums["gait_period"] += rew_gait_period
         self.episode_sums["gait"] += rew_gait
-        self.episode_sums["gait_trajectory"] += rew_gait_trajectory
+
+
+        self.episode_sums["total_reward"] += self.rew_buf
 
 
         # self.episode_sums["air_time"] += rew_foot_air_time
         self.episode_sums["knee_collision"] += rew_knee_collision
         self.episode_sums["foot_contact"] += rew_foot_contact
         self.episode_sums["gait"] += rew_gait
-        # self.episode_sums["hip"] += rew_hip
+        self.episode_sums["gait_hip"] += rew_gait_hip
+        self.episode_sums["gait_knee"] += rew_gait_knee
+        self.episode_sums["gait_foot"] += rew_gait_foot
 
-        if self.testing:
-            error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
+
+        # Save data
+        if self.save_data:
+            vel_error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
+
             self.save_footstep.append(self.sim_contacts)
-            self.save_ref_cont.append(self.desired_mpc)
+            self.save_ref_cont.append(self.sim_contacts)
             self.save_com_vel.append(self.base_lin_vel)
             self.save_torques.append(self.torques)
-            self.save_pos.append(self.hip_sim)
+            self.save_target_pos.append(self._get_gait_trajectory()[0])
+            self.save_pos.append(self._get_gait_trajectory()[1])
             self.save_period.append(torch.mean(self._gait_period(),dim=-1))
-            check = self.save_period
+
+        self.reward_sim = torch.sum(self.rew_buf)
+        self.reward_hip= torch.sum(rew_gait_hip)
+        self.reward_knee= torch.sum(rew_gait_knee)
+        self.reward_foot = torch.sum(rew_gait_foot)
+
 
 
     def compute_observations(self):
@@ -668,26 +734,38 @@ class A1(VecTask):
             self.episode_sums[key][env_ids] = 0.
 
     def _check_termination(self):
+        """Terminate learning process if the following conditions are met """
 
-        # reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 0.
-        # time_out = self.progress_buf > self.max_episode_length
-        # reset_buf = reset | time_out
-        #
-        # if not self.allow_knee_contatcs:
-        #     reset = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
-        #     reset_buf = reset | reset_buf
-        #
-        # self.reset_buf = reset_buf
 
-        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=-1) > 1.
+        self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+
+        #if knee touches the ground
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
 
+        #if hip touches the ground
+        if not self.allow_hip_contacts:
+            hip_contact = torch.norm(self.contact_forces[:, self.hip_indices, :], dim=2) > 1.
+            self.reset_buf |= torch.any(hip_contact, dim=1)
+
+        # if base height is less than a minimum value
+        if self.cfg['env']['learn']['terminatedBasedHeight']:
+            self.body_height_buf = torch.mean(self.root_states[:, 2].unsqueeze(1), dim=1) \
+                                       < self.cfg['env']['learn']['terminalHeight']
+            self.reset_buf = torch.logical_or(self.body_height_buf, self.reset_buf)
+
+
+        #if base has an extreme orientation
+        if self.cfg['env']['learn']['terminatedBasedOrient']:
+            self.body_orient_buf = torch.mean(self.root_states[:, 6].unsqueeze(1), dim=1) \
+                                   < self.cfg['env']['learn']['terminalOrient']
+            self.reset_buf = torch.logical_or(self.body_orient_buf, self.reset_buf)
+
         self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf),
                                      self.reset_buf)
 
-    #M: Push Robot
+    #Push Robot
     def push_robots(self):
         """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity. """
         self.root_states[:, 7:9] = torch_rand_float(-0.3, 0.8, (self.num_envs, 2), device=self.device) # lin vel x/y
@@ -707,9 +785,19 @@ class A1(VecTask):
 
 
 
-
-
     ############################# Reward Functions Definition
+
+    def _get_reward_foot_air_time(self):
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+
+
+        first_contact = (self.feet_air_time > 0.) * contact
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact
+
+        return rew_airTime
 
 
     def _get_knee_collision_reward(self):
@@ -731,8 +819,9 @@ class A1(VecTask):
 
         ''' Difference between simulation step period and desired MPC step period'''
 
+        sim_period = self.period/self.decimation
         mpc_period = self._gait_period()
-        rew_gait_period = torch.sum(torch.abs(mpc_period - self.period) , dim=-1)
+        rew_gait_period = torch.sqrt(torch.sum(torch.square(mpc_period - sim_period) , dim=-1))
 
         return rew_gait_period
     #
@@ -746,8 +835,6 @@ class A1(VecTask):
         # forces from sim
         self.feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) > 1.
 
-        # self.footprint_draw()
-
         #enabling reward after spawning
         self.enabling_rewards(mpc_contacts)
 
@@ -758,7 +845,8 @@ class A1(VecTask):
         sim_contacts = self.feet_contacts.long()
 
         # difference between desired and sim
-        diff = torch.abs(desired_mpc_enabled - sim_contacts)
+        # diff = torch.square(desired_mpc_enabled - sim_contacts)  ## for enabling after first contact
+        diff = torch.square(mpc_contacts.long() - sim_contacts)
         rew_gait = torch.sum(diff, dim=-1)
         return rew_gait
 
@@ -768,15 +856,27 @@ class A1(VecTask):
 
         mpc_trajectory, sim_trajectory = self._get_gait_trajectory()
 
+
+
         # enabling reward after spawning
         self.enabling_rewards(mpc_trajectory)
 
         mpc_trajectory_enabled = torch.zeros_like(mpc_trajectory, dtype=torch.float32, device=self.device)
-        mpc_trajectory_enabled = torch.where(self.enable_trajectory, mpc_trajectory, mpc_trajectory_enabled)
+        mpc_trajectory_enabled = torch.where(self.enable_trajectory, mpc_trajectory, sim_trajectory)
 
-        trajectory_reward  = torch.sum(torch.sum(torch.sqrt(torch.sum(torch.square(mpc_trajectory_enabled - sim_trajectory),
-                                                           dim=-1)), dim=0), dim=-1)
-        return trajectory_reward
+
+        #### enable trajectory or not?
+
+        sqr_diff = torch.square(mpc_trajectory - sim_trajectory)  #squered diff between desired and simulated trajectories
+        sum_sqr_diff = torch.sum(sqr_diff, dim=-1) # sum over xyz positions
+
+
+        sqrt_sum_sqr_diff= torch.sqrt(sum_sqr_diff) #sqrt of the summed value
+        sum_sqrt_sum_sqr_diff = torch.sum(sqrt_sum_sqr_diff,dim=-1) #sum over 4 feet
+        trajectory_reward = torch.sum(sum_sqrt_sum_sqr_diff, dim=0) # sum over hips, calves nd feet
+
+
+        return sum_sqrt_sum_sqr_diff
 
 
 
@@ -829,9 +929,9 @@ class A1(VecTask):
         # self.commands[env_ids, 2] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze(1)
 
         # to test
-        # self.commands[env_ids, 0] = 0.5
-        # self.commands[env_ids, 1] = 0
-        # self.commands[env_ids, 2] = 0
+        self.commands[env_ids, 0] = 0.5
+        self.commands[env_ids, 1] = 0
+        self.commands[env_ids, 2] = 0
 
 
         # choose period according to velocity
@@ -853,7 +953,7 @@ class A1(VecTask):
     #################### MPC Functions
     def load_mpc_390(self):
         # load data from MPC
-        path = "/home/robohike/motion_imitation/10000/"
+        path = "/home/robohike/motion_imitation/1000/"
 
         # load MPC gaits
         ########### tripod
@@ -951,7 +1051,7 @@ class A1(VecTask):
             self.period9 = period9["period"]
 
         # load MPC footsteps
-        ########### trotting
+        # ########### trotting
         with np.load(path + "foot1.npz") as f_tp_01:
             self.f_tp_01 = f_tp_01["foot_pos"]  # [n_time_steps, feet indices, xyz]
         with np.load(path + "foot2.npz") as f_tp_02:
@@ -971,14 +1071,14 @@ class A1(VecTask):
             self.f_tt_08 = f_tt_08["foot_pos"]  # [n_time_steps, feet indices, xyz]
         with np.load(path + "foot9.npz") as f_tt_09:
             self.f_tt_09 = f_tt_09["foot_pos"]
-        # with np.load(path + "footsteps_mpc10tt.npz") as f_tt_10:
+        # with np.load(path + "foot10.npz") as f_tt_10:
         #     self.f_tt_10 = f_tt_10["footsteps"]
 
     def _gait_period(self):
         '''Check how long it took for the reference foot to complete a full gait cycle/period.'''
 
         # contact of the reference foot
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        contact = self.contact_forces[:, self.feet_indices, 2] > 0.
 
 
         # contact counter for swing
@@ -1049,7 +1149,7 @@ class A1(VecTask):
         # self.footstep_update = torch.where(condition1, self.cycle_index,
         #                                    self.footstep_update)
 
-        ## Checking Period
+        # Checking Period
         # print('contact', contact)
         # print('step', self.stance_step_counter)
         # print('cycle', self.cycle_index)
@@ -1066,12 +1166,18 @@ class A1(VecTask):
 
         # contact counter for swing
         start_gait = torch.where(self.feet_contacts,1,0).to(torch.bool)
+
+        start_reward =  start_gait.any(dim =-1)
+
+
+        self.enable_reward = torch.logical_or(self.enable_reward,start_reward)
+
         self.enable_gait = torch.logical_or(self.enable_gait,start_gait)
 
         self.enable_traj= torch.unsqueeze(self.enable_gait,-1)
         self.enable_traje = torch.unsqueeze(self.enable_traj,0)
         self.enable_trajectory = self.enable_traje.expand(3,self.num_envs,self.num_legs,self.num_xyz)
-        check =1 
+
 
 
 
@@ -1089,10 +1195,11 @@ class A1(VecTask):
         # self.gait_downsampled[:, :self.till_contact, :] = torch.zeros(self.num_envs, self.till_contact,
         #                                                               len(self.feet_indices))
         # self.gait_downsampled[:, self.till_contact:, :] = self.gait[:, self.till_contact:, :]
-        check = self.gait
+
         desired_mpc = torch.gather(self.gait, 1, ttest1.to(torch.int64))
         #desired_mpc = torch.gather(self.gait, 1, ttest1.to(torch.int64))
         desired_mpc = torch.squeeze(desired_mpc, 1)
+        self.sim_contacts = desired_mpc
         return desired_mpc
 
     def get_mpc_footstep(self,tensor):
@@ -1162,15 +1269,19 @@ class A1(VecTask):
         torch.save(self.save_torques, '/home/'+pc+'/test_data/trq'+save_vel+'.pt')
         torch.save(self.save_ref_cont, '/home/'+pc+'/test_data/ref'+save_vel+'.pt')
         torch.save(self.save_pos, '/home/'+pc+'/test_data/pos'+save_vel+'.pt')
+        torch.save(self.save_target_pos, '/home/' + pc + '/test_data/target_pos' + save_vel + '.pt')
         torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
 
-    def test_extracted_NN(self):
-        NN_path = "NN/traced_A1_NN_NEW.pt"
-        load_NN = torch.jit.load(NN_path)
+    def test_extracted_NN(self, name_of_file):
+        # take to ocnstructor
+
+        NN_file = os.path.join(self.NN_path, name_of_file)
+        load_NN = torch.jit.load(NN_file)
         load_NN.eval()
-        check = self.obs_buf
         actions = load_NN.forward(self.obs_buf)
+
         actions = torch.unsqueeze(actions, 0)
+
         return actions
 
 

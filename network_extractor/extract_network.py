@@ -45,7 +45,7 @@ def generate_network():
     rel_path = os.path.dirname(os.path.realpath(__file__))
 
     #Get checkpoint and cfg paths
-    file_name = 'A1Terrain_high_torques'
+    file_name = 'new_position_2'
     checkpoint_path = os.path.join(path,'runs/A1Terrain/save_runs/'+file_name+'.pth')
     cfg_path = os.path.join(path, 'cfg/task/A1Terrain.yaml')
 

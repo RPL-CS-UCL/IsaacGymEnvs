@@ -1,3 +1,4 @@
+
 # used to create the object
 name: A1
 physics_engine: 'physx'
@@ -78,31 +79,37 @@ env:
     #file: "urdf/go1/urdf/go1.urdf"
     footName: foot # SHANK if collapsing fixed joint, FOOT otherwise
     kneeName: thigh
-    collapseFixedJoints: true
+    collapseFixedJoints: false
     fixBaseLink: false
     defaultDofDriveMode: 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
 
   learn:
+    rew_buf: None
+
     allowKneeContacts: true
+    allowHipContacts: false
+
     actionFilter: false
     # rewards
-    linearVelocityXYRewardScale: 1.1
+    linearVelocityXYRewardScale: 1.
     linearVelocityZRewardScale: -4.0
     angularVelocityXYRewardScale: -0.05
     angularVelocityZRewardScale: 1.0
-    orientationRewardScale: -2.4 
-    torqueRewardScale: -0.00002 
-    jointAccRewardScale: -0.0005 
-    baseHeightRewardScale: -5.0 
+    orientationRewardScale: -2.4
+    torqueRewardScale: -0.00002
+    jointAccRewardScale: -0.0005
+    baseHeightRewardScale: -5.0
     feetAirTimeRewardScale:  0.3
     kneeCollisionRewardScale: -0.25
     actionRateRewardScale: -0.01
     footcontactRewardScale: -0.05
     hipRewardScale: -0.25
-    gaitRewardScale: -0.1
-    gaitPeriodRewardScale: -0.0005 #0.01
+    gaitRewardScale: -0.0001
+    gaitPeriodRewardScale: -0.00005 #-0.0005
     footstepReward: -0.01
-    gaitTrajectoryRewardScale: -0.001
+    gaitTrajectoryHipRewardScale: -0.00005
+    gaitTrajectoryKneeRewardScale: -0.00005
+    gaitTrajectoryFootRewardScale: -0.00005
     pushRobot: false
 
     # normalization
@@ -131,6 +138,12 @@ env:
     # episode length in seconds
     episodeLength_s: 20
 
+    terminatedBasedHeight: false
+    terminalHeight: 0.1
+
+    terminatedBasedOrient: false
+    terminalOrient: 0.5
+
   # viewer cam:
   viewer:
     refEnv: 0
@@ -146,7 +159,7 @@ env:
     actionFilter: false
 
 sim:
-  dt: 0.002 # 1/500Hz
+  dt: 0.005 # 1/500Hz
   substeps: 1
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}

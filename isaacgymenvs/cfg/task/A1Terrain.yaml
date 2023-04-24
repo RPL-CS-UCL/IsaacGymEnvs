@@ -36,7 +36,7 @@ env:
   randomCommandVelocityRanges:
     # train
     linear_x: [-1.0,1.0] # min max [m/s]
-    linear_y: [-1.0,  1.0]   # min max [m/s]
+    linear_y: [-1.0,1.0]   # min max [m/s]
     yaw: [-3.14, 3.14]    # min max [rad/s]
 
   control:
@@ -47,7 +47,7 @@ env:
     # action scale: target troque = actionScale * action
     actionScale: 0.25
     #clip actions for safety
-    actionClip: 30
+    actionClip: 33
     # decimation: Number of control action updates @ sim DT per policy DT
     decimation: 4
 
@@ -72,41 +72,61 @@ env:
 
 
 
-
   urdfAsset:
-#
+
     file: "urdf/A1/urdf/a1_unitree_modified_no_joint_dynamics.urdf"
     #file: "urdf/A1/urdf/a1_unitree.urdf"
     #file: "urdf/go1/urdf/go1.urdf"
     footName: foot # SHANK if collapsing fixed joint, FOOT otherwise
     kneeName: thigh
+    hipName: hip
     collapseFixedJoints: true
     fixBaseLink: false
     defaultDofDriveMode: 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
 
   learn:
-    allowKneeContacts: true
+    allowKneeContacts: false
+    allowHipContacts: false
     # rewards
-    linearVelocityXYRewardScale: 1.1 #1.1
-    linearVelocityZRewardScale: -4.0
+    linearVelocityXYRewardScale: 1.0 #1.1
+    linearVelocityZRewardScale: -2.0   #-4.0
     angularVelocityXYRewardScale: -0.05
-    angularVelocityZRewardScale: 1.0
-    orientationRewardScale: -2.4
-    torqueRewardScale: -0.00002 #-0.000025
-    jointAccRewardScale: -0.0005 #-0.0005
-    baseHeightRewardScale: -5.0 
-    feetAirTimeRewardScale:  0.3 #0.3
-    kneeCollisionRewardScale: -0.25
+    angularVelocityZRewardScale: 0.5 #01.0
+    orientationRewardScale: -1. #-2.4
+    torqueRewardScale: -0.0002 #-0.0002
+    jointAccRewardScale: -0.00000025 #-0.0005
+    feetAirTimeRewardScale: 1.0 #1.0
+    kneeCollisionRewardScale: -1.0 #-0.25
     actionRateRewardScale: -0.01
-    footcontactRewardScale: -0.05 #-0.05
-    hipRewardScale: -0.25
+    hipRewardScale: -1. #-0.25
+    thighRewardScale: -1.
+#
+#    linearVelocityXYRewardScale: 1.1
+#    linearVelocityZRewardScale: -4.0
+#    angularVelocityXYRewardScale: -0.05
+#    angularVelocityZRewardScale:  1.0
+#    orientationRewardScale: -2.4
+#    torqueRewardScale: -0.000002
+#    jointAccRewardScale: -0.0005
+#    feetAirTimeRewardScale: 0.3
+#    kneeCollisionRewardScale: --0.25
+#    actionRateRewardScale: -0.01
+#    hipRewardScale: -0.25
+#    thighRewardScale: -1.
+
+
+    baseHeightRewardScale: -5.0
+    footcontactRewardScale: -0.05
     gaitRewardScale: -0.1
     terimnationRewardScale: 0.0
 
-    onlyPositive: true #only positive rewards to avoid earlly termination
+    onlyPositive: false #only positive rewards to avoid early termination
 
     terminatedBasedHeight: true
-    terminalHeight: 0.20
+    terminalHeight: 0.1
+
+    terminatedBasedOrient: false
+    terminalOrient: 0.5
 
     # normalization
     linearVelocityScale: 2.0
@@ -118,12 +138,13 @@ env:
 
     # noise 
     addNoise: true
-    noiseLevel: 1.25 # scales other values
-    dofPositionNoise: 0.0005
-    dofVelocityNoise: 0.01
-    linearVelocityNoise: 0.01
-    angularVelocityNoise: 0.0001
-    gravityNoise: 0.00002
+    noiseLevel: 1.0 # scales other values
+    dofPositionNoise: 0.01 #0.0005
+    dofVelocityNoise: 1.5 #0.01
+    linearVelocityNoise: 0.2 # 0.01
+    angularVelocityNoise: 0.2 #0.0001
+    gravityNoise: 0.05 #0.00002
+
 
     #randomization
     randomizeFriction: true
@@ -149,7 +170,7 @@ env:
     actionFilter: false
 
 sim:
-  dt: 0.002 # 1/500Hz
+  dt: 0.005 # 1/500Hz
   substeps: 1
   up_axis: "z"
   use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
