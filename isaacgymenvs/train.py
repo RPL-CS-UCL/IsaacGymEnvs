@@ -84,7 +84,7 @@ def launch_rlg_hydra(cfg):
     cfg.task.env.learn.gaitTrajectoryKneeRewardScale = gaitTrajectoryKneeRewardScale
     cfg.task.env.learn.gaitTrajectoryFootRewardScale = gaitTrajectoryFootRewardScale
     cfg.task.env.learn.linearVelocityXYRewardScale = linearVelocityXYRewardScale
-    # cfg.task.env.learn.jointAccRewardScale = jointAccRewardScale
+    cfg.task.env.learn.orientationRewardScale = orientationRewardScale
     cfg.task.env.learn.actionRateRewardScale = actionRateRewardScale
     cfg.task.env.learn.torqueRewardScale = torqueRewardScale
 
@@ -221,18 +221,18 @@ def optimize_reward(trial:optuna.Trial):
     global gaitTrajectoryKneeRewardScale
     global gaitTrajectoryFootRewardScale
     global linearVelocityXYRewardScale
-    global jointAccRewardScale
+    global orientationRewardScale
     global actionRateRewardScale
     global torqueRewardScale
 
     gaitRewardScale = -1 * trial.suggest_float("gaitRewardScale", 1e-5, 1e-1, log=True)
-    gaitPeriodRewardScale = -1 * trial.suggest_float("gaitPeriodRewardScale", 1e-7, 1e-5, log=True)
+    gaitPeriodRewardScale = -1 * trial.suggest_float("gaitPeriodRewardScale", 1e-5, 1e-3, log=True)
     gaitTrajectoryHipRewardScale = -1 * trial.suggest_float("gaitTrajectoryHipRewardScale", 1e-3, 1e-1, log=True)
     gaitTrajectoryKneeRewardScale = -1 * trial.suggest_float("gaitTrajectoryKneeRewardScale", 1e-3, 1e-1, log=True)
     gaitTrajectoryFootRewardScale = -1 * trial.suggest_float("gaitTrajectoryFootRewardScale", 1e-3, 1e-1, log=True)
     torqueRewardScale = -1 * trial.suggest_float("torqueRewardScale", 1e-5, 1e-1, log=True)
     actionRateRewardScale = -1 * trial.suggest_float("actionRateRewardScale", 1e-2, 1e-1, log=True)
-    # jointAccRewardScale = -1 * trial.suggest_float("gaitRewardScale", 1e-5, 1e-1, log=True)
+    orientationRewardScale = -1 * trial.suggest_float("orientationRewardScale", 1e-1, 1.5, log=True)
     linearVelocityXYRewardScale =  trial.suggest_float("linearVelocityXYRewardScale", 1e-1, 1, log=True)
 
 
@@ -277,6 +277,8 @@ if __name__ == "__main__":
     print('Playing best Trial')
     optimize_reward(study.best_trial)
     print('With the best parameters being ', study.best_params)
+
+    # launch_rlg_hydra()
 
 
 

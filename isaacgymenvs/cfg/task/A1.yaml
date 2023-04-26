@@ -86,7 +86,7 @@ env:
   learn:
     rew_buf: None
 
-    allowKneeContacts: true
+    allowKneeContacts: false
     allowHipContacts: false
 
     actionFilter: false
@@ -105,11 +105,15 @@ env:
     footcontactRewardScale: -0.05
     hipRewardScale: -0.25
     gaitRewardScale: -0.0001
-    gaitPeriodRewardScale: -0.00005 #-0.0005
+    gaitPeriodRewardScale: -0.0001 #-0.0005
     footstepReward: -0.01
+    JointAnglesRewardScale: -0.1
+
     gaitTrajectoryHipRewardScale: -0.00005
     gaitTrajectoryKneeRewardScale: -0.00005
     gaitTrajectoryFootRewardScale: -0.00005
+
+
     pushRobot: false
 
     # normalization

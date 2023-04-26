@@ -145,7 +145,7 @@ def get_sim_gaits(which_gait,which_file):
     contacts = load_sim(which_file)[0]
 
     contacts =contacts[which_gait]
-    np_contact = get_tensor_to_array(contacts,4)
+    np_contact = get_tensor_to_array(contacts,12)
 
     fl_foot = np_contact[:, 0]
     fr_foot = np_contact[:, 1]
