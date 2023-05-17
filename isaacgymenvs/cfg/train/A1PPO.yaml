@@ -46,6 +46,7 @@ params:
   config:
     name: ${resolve_default:A1,${....experiment}}
     full_experiment_name: ${.name}
+    save_name: 'Optimiser_'
     env_name: rlgpu
     ppo: True
     mixed_precision: True
@@ -74,7 +75,10 @@ params:
     seq_len: 4 # only for rnn
     bounds_loss_coef: 0.
 
-    max_epochs: ${resolve_default:6000,${....max_iterations}}
+    trial_num: None
+    save_wandb: True
+
+    max_epochs: ${resolve_default:3500,${....max_iterations}}
     save_best_after: 100
     score_to_win: 20000
     save_frequency: 50

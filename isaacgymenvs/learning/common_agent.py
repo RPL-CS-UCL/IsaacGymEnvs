@@ -34,7 +34,7 @@ import os
 import time
 import yaml
 
-from rl_games.algos_torch import a2c_continuous
+import rl_games.algos_torch
 from rl_games.algos_torch import torch_ext
 from rl_games.algos_torch import central_value
 from rl_games.algos_torch.running_mean_std import RunningMeanStd
@@ -51,7 +51,7 @@ from . import amp_datasets as amp_datasets
 from tensorboardX import SummaryWriter
 
 
-class CommonAgent(a2c_continuous.A2CAgent):
+class CommonAgent(rl_games.algos_torch.a2c_continuous.A2CAgent):
 
     def __init__(self, base_name, params):
     
@@ -110,6 +110,14 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.tensor_list += ['next_obses']
         return
 
+    def save_modified(self, fn,save_wandb):
+        state = self.get_full_state_weights()
+        torch_ext.save_checkpoint(fn, state)
+        torch.save(fn + self.config['trial_num'] + ".pth",state)
+        if "wandb" in self.config and save_wandb:
+            import wandb
+            wandb.save(fn + self.config['trial_num'] + ".pth", policy="now")
+
     def train(self):
         self.init_tensors()
         self.last_mean_rewards = -100500
@@ -120,7 +128,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
 
-        self.model_output_file = os.path.join(self.network_path, self.config['name'])
+        self.name = self.config['save_name']+'_'+self.config['trial_num']
+
+        self.model_output_file = os.path.join(self.network_path,self.name)
 
         if self.multi_gpu:
             self.hvd.setup_algo(self)
@@ -171,7 +181,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
                 if self.save_freq > 0:
                     if (epoch_num % self.save_freq == 0):
-                        self.save(self.model_output_file + "_" + str(epoch_num))
+                        self.save(self.model_output_file)
 
                 if epoch_num > self.max_epochs:
                     self.save(self.model_output_file)
@@ -180,6 +190,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
                 update_time = 0
         return
+
 
     def train_epoch(self):
         play_time_start = time.time()

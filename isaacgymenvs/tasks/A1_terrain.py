@@ -167,12 +167,14 @@ class A1Terrain(VecTask):
 
         #### testing data
         if self.save_data:
-            self.save_footstep = []
-            self.save_ref_cont = []
-            self.save_torques = []
+            self.save_ref_period = []
+            self.save_period =[]
+            self.save_ref_joint_angles =[]
+            self.save_joint_angles = []
+            self.ref_com_vel = []
             self.save_com_vel = []
-            self.save_pos = []
-            self.save_period = []
+            self.save_torques = []
+
 
 
         self.iteration_index = torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)

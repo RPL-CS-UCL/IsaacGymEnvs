@@ -41,3 +41,371 @@ gaitRewardScale,gaitPeriodRewardScale,gaitTrajectoryHipRewardScale,gaitTrajector
 -0.03070668163450863,-1.0929945545037503e-06,-0.003231154972146893,-0.002225497277794621,-0.0552043258299602,-4.23881643822906e-05,-0.02146620800417376,0.4244341211309339,0.4244341211309339,"tensor(12.4740, device='cuda:0')"
 gaitRewardScale,gaitPeriodRewardScale,gaitTrajectoryHipRewardScale,gaitTrajectoryKneeRewardScale,gaitTrajectoryFootRewardScale,torqueRewardScale,actionRateRewardScale,linearVelocityXYRewardScale,linearVelocityXYRewardScale,reward
 -0.08094365301193368,-3.4095058711116605e-06,-0.001467971691900751,-0.0053633580482959145,-0.019974076715026785,-0.00293337733701737,-0.04116329621409581,0.7471754830667321,0.7471754830667321,"tensor(10.8938, device='cuda:0')"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.26695505592879604,-0.007959758289282876,-0.8871830020683465,-0.0020029394472201724,-0.021419064624655242,-0.018778682230463296,"tensor(-1.0206, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.3215771276776986,-0.018796368497281144,-0.35602080087664173,-0.5074773728486606,-0.0006145444917398547,-0.013440040093451707,"tensor(-12.7716, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8090670836523525,-0.02110554536233318,-0.14652777093545558,-0.0014958694316173796,-0.009302095902535236,-0.011871049663757785,"tensor(-1.7921, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.06472302119064301,-0.0019418333790060256,-2.423973803922793,-0.3701572407694516,-0.006494421089875935,-0.04058803019245151,"tensor(-13.7742, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.297630880377156,-0.0020588539467123134,-0.1519391808808797,-0.008460249532060156,-0.00034299752426326523,-0.023908646083939177,"tensor(-0.6873, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.06604723637376601,-0.3546549244188291,-0.49711395546349535,-0.7533019810880215,-2.3456022667087466e-05,-0.052329105722768006,"tensor(-46.7552, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.182862975333843,-0.010294578997511508,-3.0434862167349643,-0.17662843521330454,-0.005882530884353935,-0.015937634805884903,"tensor(-7.0820, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2776815496256777,-0.6728194043014132,-0.18070878044814756,-0.17468893219046097,-3.771278293736601e-05,-0.015526521101930977,"tensor(-48.0201, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01582062968822973,-0.06699442653645524,-3.8709566834180382,-0.057092840366777045,-0.0015305992492194152,-0.08285633102300899,"tensor(-7.8703, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.4571445910250163,-0.006557496400018464,-0.7114115113409346,-0.15467727843064447,-0.05611160059942908,-0.02313605609966032,"tensor(-6.8831, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.7283420547606199,-0.0010900234711646607,-0.10135525250198729,-0.008407989946195696,-0.00022916558010276073,-0.02863731204147778,"tensor(-0.6413, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.6069109739205085,-0.0010828483706568233,-0.1239113330755924,-0.00896296405216605,-0.0003105218400455931,-0.027008023709612413,"tensor(-0.6111, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.9789232225270634,-0.00131945380230362,-0.10048921922837667,-0.009524535828398845,-0.00013384589779524708,-0.03353927358359082,"tensor(-0.7288, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.6693760750460295,-0.0010971577579217443,-0.2722305603222024,-0.00810902297370903,-0.00010455253854281029,-0.052692640589632904,"tensor(-9.5175, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8568951200429246,-0.09023591542478239,-0.10147905784898524,-0.01830139616548037,-0.00161330835911537,-0.02652353721251393,"tensor(-7.0908, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.5081397387729141,-0.0038046512644810114,-1.3856679073691693,-0.00455794958650373,-0.00011904345573834675,-0.03878235738582525,"tensor(-0.8675, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.08779823681083292,-0.17301732927369193,-0.25028079392576097,-0.04242258092146419,-1.3107115208264747e-05,-0.08198615290201221,"tensor(-13.6209, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.023955844857478006,-0.003337835553267436,-0.3811852595951134,-0.003922470235592472,-0.00028562569469269884,-0.05182007281926973,"tensor(-1.1687, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.9731381159861212,-0.02414234338388408,-0.21313169807416385,-0.023080075462947665,-0.002300508247889487,-0.030534822176837416,"tensor(-3.0160, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.44837960773137564,-1.9274859361284524,-0.13848928327568047,-0.0010517368064470124,-5.27242824933098e-05,-0.010113630116143708,"tensor(-114.9776, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.1285694393416836,-0.003704879965857384,-1.4362049935304437,-0.003582140269255784,-0.0004627558702827455,-0.02082953283846892,"tensor(-0.7123, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.1238134838533342,-0.0022021782723748388,-0.14629478170587032,-0.012380346036304946,-0.00030969670597731923,-0.025804690170156012,"tensor(-4.9242, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10714150833335273,-0.13013066614600788,-3.1663572524554104,-0.7855518457145956,-0.0964420030935823,-0.0363965113205642,"tensor(1133.3166, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.030134812651109073,-0.9721122122789586,-0.17791729817242624,-0.048654824894173575,-0.002139454112203742,-0.04449058900972855,"tensor(32.5711, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.29608619569531536,-0.08291284494338914,-0.8719231667911442,-0.014642600867345338,-0.02108520334204287,-0.023908173339674578,"tensor(1.4357, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.14308875956495407,-0.8350277112896839,-0.9531645678199053,-0.00651830581917095,-8.992228804007271e-05,-0.013605432224662447,"tensor(-46.5981, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.06398952716628041,-0.09995360823338967,-1.2452015095032656,-0.003156363741026479,-0.03918577625568816,-0.07765726846229455,"tensor(-1.8713, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.6323698303674649,-0.39956568446447466,-0.11770676427107099,-0.01725600610742356,-0.0004409628250311468,-0.019599041071117186,"tensor(2.0665, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.6919089687359461,-0.0010433620227106723,-0.6451461621927098,-0.0710149192914141,-0.0013608138578106188,-0.09513695550362844,"tensor(205.4986, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01741392244204388,-0.008228984217220861,-0.30247303044031776,-0.0059717312005624695,-0.0015607486223759824,-0.08239453954716165,"tensor(14.0656, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.17326022996128684,-1.7838223986913828,-0.9292646735444405,-0.8922111609871318,-1.0230707503200837e-05,-0.017238493886438888,"tensor(3606.4050, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.09363763675676676,-0.5709755906189817,-1.041265674205236,-0.0011226263438883818,-0.00013514143095544925,-0.01734732682394355,"tensor(-39.4824, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.8262127044108019,-0.007723004418323559,-2.5536618042743777,-0.9651282738095719,-1.1216375031376465e-05,-0.010153410285099402,"tensor(4219.2687, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.9274986260152882,-0.010598431037672744,-2.8278681535828527,-0.9962747640232303,-1.4895209412301338e-05,-0.010035918592227489,"tensor(2809.9842, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.7251947452149632,-0.013444109132473951,-1.8478025137417053,-0.21634563925375272,-1.297177788792776e-05,-0.011044563463914466,"tensor(548.1353, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.3298950843360322,-0.002030129511336076,-0.36094011005897436,-0.2827582666774345,-4.316803759937126e-05,-0.014631016572911075,"tensor(411.9067, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.011395258519148297,-0.03662170632199517,-1.8991643096410042,-0.30981058991430127,-1.1628855705673562e-05,-0.027453817716115256,"tensor(1244.7086, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.950987800705034,-0.005179318290816448,-1.8117547488822923,-0.11971579851221846,-4.625300400411297e-05,-0.013526391742844653,"tensor(241.8048, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.21780091827747577,-1.9655819342670398,-0.4315268969765086,-0.48364296557688147,-0.0002651262614669509,-0.01867212482976542,"tensor(521.0824, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.026859435578308385,-0.02462888622476034,-3.7088720617449225,-0.08725446493283458,-3.256069047071287e-05,-0.05333580515088723,"tensor(155.2819, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05175162669533914,-0.0032001281762625944,-0.5651432435713484,-0.16492079017044625,-0.006937910137943043,-0.022945264105352508,"tensor(457.5119, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.4236471017943876,-0.2209704935851168,-1.456021295978586,-0.5220420406223992,-0.0003986071374201957,-0.011058379507240524,"tensor(2182.5553, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.1222183400641272,-0.019735527831979963,-2.295986706544345,-0.03961499801759275,-7.921752201644695e-05,-0.015733511770917717,"tensor(96.7108, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.8166023344554496,-0.009371302898391085,-2.7754898401677535,-0.7374818310405098,-1.025301421534544e-05,-0.010300152235312419,"tensor(2879.7949, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.0608160479095963,-0.0051897197369138205,-2.8713971803723846,-0.523366661169167,-2.2725567190102763e-05,-0.011868384864795883,"tensor(2172.7057, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.6137484523025162,-0.05544612368587913,-3.82873910612485,-0.8419373418668324,-1.0142136297231126e-05,-0.012819829090403159,"tensor(2290.7447, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.4162164563642279,-0.0016340001675547594,-1.3803644977815217,-0.3590245820028178,-2.952808888797823e-05,-0.02192884271816568,"tensor(974.8193, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1883867807096052,-0.006210483309089641,-2.354761105056474,-0.1721707181951348,-0.00013027158191005592,-0.01011673193757536,"tensor(498.6560, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.48027562453530215,-0.01659316092810943,-0.7566328814506575,-0.9988328456343318,-2.19015605028902e-05,-0.01568845593310163,"tensor(4054.6509, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.43759356798658244,-0.024692018041797725,-0.5932545806259402,-0.4560594765597179,-5.7781696869335276e-05,-0.016134922485232257,"tensor(1898.9370, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.21633134607426036,-0.04521716080151884,-0.7783067471729703,-0.26844220635019755,-2.1438469887562352e-05,-0.032355470238151725,"tensor(792.3549, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.13199400018089846,-0.015605609667716713,-0.26555061207374725,-0.9540189269530349,-0.00022191833874432183,-0.02825688321840368,"tensor(2847.6977, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.44677173687632404,-0.004083946990308796,-0.49665981609895504,-0.7130617799809946,-0.0006453862388244497,-0.04138473959379241,"tensor(2257.0299, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.875799664624457,-0.009037675057222038,-1.1357826956915766,-0.6399275067958144,-2.057436244719723e-05,-0.012387940310981066,"tensor(1852.4905, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.3401666428559929,-0.0029005454378635627,-0.7561135523987107,-0.9112249947155749,-0.004221360810302423,-0.014531700501504808,"tensor(2649.6725, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.8627053729071583,-0.24175297433979262,-1.578098206495386,-0.40382415810849975,-1.0587471097379123e-05,-0.019742169788361175,"tensor(1336.2092, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.0969717908839363,-0.030282605453397206,-2.3706321592820845,-0.6395070666876994,-2.1821329849082083e-05,-0.012133195288722047,"tensor(1750.6460, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2917273719405045,-0.06316453726482493,-0.9065660620717033,-0.15316734976558466,-6.611172776834082e-05,-0.01649904785739148,"tensor(430.4827, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05435902787016635,-1.9338692463206488,-0.23908366294093683,-0.02642795712808078,-3.33210934464883e-05,-0.01004251919578582,"tensor(-74.5950, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.7557339895736382,-0.015148507622529714,-3.21166719812823,-0.6905488633376824,-0.07361572980365771,-0.05634392202333873,"tensor(2117.4663, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.4526181990156157,-0.13356735169523723,-0.1152311974983911,-0.08002695792587733,-1.7320348797671196e-05,-0.014083012503254796,"tensor(184.1011, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.5477517026723684,-0.007589894758564798,-1.137466971092243,-0.009796788830648174,-0.00014747900573636104,-0.020737737204645907,"tensor(25.4758, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.0691120611633828,-0.0856505169485169,-0.14762777828513074,-0.0016003054334274,-0.017980435298756113,-0.01808095369957772,"tensor(-3.9198, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.14341770335769427,-0.014714918943488293,-0.2222460663260069,-0.9689973440636703,-0.00020911789735559414,-0.028128109991746496,"tensor(3964.3157, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1323389194949049,-0.01147024460246152,-0.3917452871527018,-0.6230123063355284,-1.5484927840971436e-05,-0.02548159134327023,"tensor(1801.1236, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2969229917339915,-1.2158407324921798,-0.17593490811703327,-0.3454641920223847,-3.750391987279032e-05,-0.03406638899997579,"tensor(472.9508, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.15325773148443658,-0.020460140092927723,-0.22331329628970054,-0.9776698235216154,-8.782562277839086e-05,-0.011127745571343566,"tensor(3209.1906, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.16182226752623147,-0.019588140467037517,-0.22370194073374927,-0.9477806134484592,-0.00011438066244289488,-0.011597285377451206,"tensor(2837.8853, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.07778011147018647,-0.4716932392772085,-0.3148828756168663,-0.20806264989852072,-0.00021340539352186397,-0.0379640391282592,"tensor(389.0853, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10833240032584739,-0.036587229219880585,-0.14991844158611237,-0.44100973356717393,-8.248387711755922e-05,-0.028630428950885176,"tensor(1834.6475, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.23482724054996354,-0.018720579222204686,-0.4586303266005583,-0.27424186213056256,-0.0008291640493660896,-0.01523117106237183,"tensor(761.8077, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.042220585114325235,-0.1414502341467044,-0.20074570248055942,-0.964823277873227,-5.3408828642194766e-05,-0.013289626172874566,"tensor(3802.9903, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03596011598020488,-0.753864310901147,-0.7240955589745314,-0.004375922704122752,-5.387772700297008e-05,-0.017550486892333125,"tensor(-44.2344, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.16695935198857137,-0.011414921513495522,-0.1924233239864224,-0.5635110873251435,-4.066990156575635e-05,-0.013582141683833381,"tensor(1640.9205, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.030472456389000452,-0.1284346584958078,-0.3071254145780143,-0.9272541413380481,-0.0003826333513891396,-0.013326917210658377,"tensor(2732.6100, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.017096485559229626,-0.2159552193331542,-0.13891711113426217,-0.9882565120686797,-2.7769868383977608e-05,-0.0515777724913634,"tensor(2798.4569, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.11350981295641109,-0.006380656345215696,-0.1971837622344406,-0.7115729292181504,-1.8167939712647958e-05,-0.010842784931749066,"tensor(3158.6344, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.08115239209831444,-0.0286885873365605,-0.10335792740544762,-0.5040104801034405,-0.0001750671673750366,-0.011399261823329614,"tensor(1480.0187, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.04933011113515484,-0.05845321258609405,-0.2574790388247106,-0.39369913177840243,-8.956901334422654e-05,-0.024658037928493755,"tensor(1129.3478, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.36604982390802343,-1.0602922934648367,-0.34633713683713374,-0.7613344515096282,-1.4492815357617885e-05,-0.012924302609179823,"tensor(1997.2878, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1981972148217929,-0.28554296572847654,-0.9625907523846051,-0.21982181271802634,-5.044325886053878e-05,-0.01675279568661174,"tensor(555.5937, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2401154892509082,-0.015168143824003395,-0.6753069594942749,-0.5144097290377048,-0.00031310138817383654,-0.06753443101334389,"tensor(1430.2767, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.010350050109243522,-0.04133149777315183,-0.5606264820060776,-0.3028735836881173,-0.00010572603413164964,-0.01486103791379451,"tensor(693.1617, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10273578941554563,-0.006055733626991176,-0.19364221443536125,-0.7365842937175947,-2.6973312329747908e-05,-0.01080007074352561,"tensor(3315.5488, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03988595072616862,-0.004199918334708942,-0.17007612735273558,-0.7352911317832147,-2.7267752261060673e-05,-0.010857756772502497,"tensor(2188.0591, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.34253544479558273,-0.017933302269123173,-0.15066792912012933,-0.036274146743030845,-0.000619108074498859,-0.03943981465027654,"tensor(-3.1292, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.18824033893978478,-0.0011977606588403208,-2.5078185569994935,-0.2805795326037734,-0.0009158408169901533,-0.06214298621084626,"tensor(-12.1052, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.3552935289299532,-0.2998761508529262,-0.3442559085523335,-0.11216361717766236,-0.00022305274758458238,-0.018571406037726425,"tensor(-23.3227, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.954486782040014,-0.012574228778749516,-0.2490965630230182,-0.002590839575150462,-0.006712748289953609,-0.03996125860057636,"tensor(-1.3724, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1486191683627374,-0.02543588331929593,-0.4049926023568953,-0.18662214870024854,-0.06861122231391428,-0.015006974858266332,"tensor(-7.4680, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.11667510336986964,-0.002744040537491319,-1.628353662692877,-0.12523399209679287,-0.0011568765465182428,-0.015583737218747274,"tensor(-5.0540, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.19482405268535916,-0.5602737404108359,-2.0305873660931075,-0.008812265208807651,-9.067661927500169e-05,-0.01149996640977129,"tensor(-37.1317, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.012435125027780724,-0.33288920244121506,-2.2751944332399052,-0.01579618194837148,-0.000834052443200319,-0.03985194857811808,"tensor(-24.4751, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.022915986617726276,-0.7832145442189794,-0.7964198850517835,-0.24939197377361205,-0.0328290268245018,-0.01572508094534144,"tensor(-56.7012, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05712986478878874,-0.2925732054125936,-1.7780179495974129,-0.004083663267626543,-0.0012474965182856,-0.012826135075789637,"tensor(-23.6626, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.6904803482740944,-0.0068507673809193705,-0.10545537858735728,-0.0011915316840908781,-0.010384870364502547,-0.08854478706210915,"tensor(-1.1262, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.9152755436803366,-0.012290298821372675,-0.10965224378927116,-0.0011079336174234155,-0.010103848968532239,-0.0947184220192987,"tensor(-2.2863, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.8015739550666092,-0.005360087378301041,-0.21896119782777046,-0.001039623243241802,-0.012679127222644792,-0.0986750582602564,"tensor(-1.4208, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.7995684071493206,-0.07490550479169297,-0.21266354418803596,-0.0033866890123942,-0.005014127201295127,-0.025564305758103704,"tensor(-5.7169, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8280929057894084,-0.06826717651016215,-0.10752731525326249,-0.0031032648063562054,-1.310230876126606e-05,-0.06033527309218146,"tensor(-5.5706, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8289906050358685,-0.005700648656730073,-0.7140089682773577,-0.8680373357595434,-0.003648388611631477,-0.06045818878277981,"tensor(-27.5209, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.5085798945038275,-0.001292094007490929,-0.3603344904868786,-0.002288986106702831,-0.027585009342690852,-0.030689093844971836,"tensor(-0.3774, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.4445158321420972,-0.0010491580390319002,-0.9865139540178257,-0.009693883342871638,-0.09271965208609348,-0.02172858229881458,"tensor(-0.7993, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.39344438112403235,-0.0010105606978848395,-3.9996247109773817,-0.027679526320184417,-0.09842176749697455,-0.02428528180966491,"tensor(-3.1165, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.079629763364272,-0.002221861840732136,-1.0756078765071473,-0.007590344032327695,-0.033077674940206116,-0.026474295325427413,"tensor(-0.7801, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.07314495548460496,-0.0025082872905331935,-0.47175450535163826,-0.007124400966164624,-0.030647587529181907,-0.03018576687396627,"tensor(-0.7101, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.061676573619197324,-0.0028160451461802403,-0.4918513887308273,-0.006833678532747325,-0.024932482982245752,-0.0300108565550923,"tensor(-0.9632, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.06205303527738555,-0.0025490419878155843,-1.239969212674834,-0.019862006977060555,-0.026017443413318304,-0.03327641301708281,"tensor(-2.3928, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03745712550395855,-0.0021122937550503294,-0.5422588458142729,-0.05190337126773908,-0.0025318077535402914,-0.03232273615857359,"tensor(-2.6680, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.08443215949437004,-0.0048905417210368075,-0.2993081859550899,-0.0020414518696431506,-0.03990351964306004,-0.048489027208117486,"tensor(-1.0623, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.030498013065246816,-1.8358825961857592,-1.0288015086305116,-0.005551527760375172,-0.01695703317307787,-0.019895792760207146,"tensor(-112.9161, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10156399625050831,-0.0016065734966345124,-0.5957978092985073,-0.0019449412344953565,-0.040346526879139824,-0.02900433667264304,"tensor(-0.4247, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2764178802088601,-0.0015276577234336888,-0.44073353761923734,-0.001651275729512935,-0.0526782371952285,-0.047425619954025236,"tensor(-0.6041, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2064101014962193,-0.0016039242430624092,-0.6807339214677796,-0.0018118421817331705,-0.06017724035244444,-0.048954100546028646,"tensor(-0.8739, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.5471458201979151,-0.009033941460125728,-0.3503495907921698,-0.0018754423750106397,-0.002237277017782727,-0.04744784663444557,"tensor(-0.8715, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.29034429295114816,-0.0019901336583794966,-0.6274520017000349,-0.35612737950191153,-0.08238633654221379,-0.06779511936770721,"tensor(684.4065, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.016919732798133996,-0.20952917523518044,-0.1003102495917261,-0.7791148754945558,-0.0010557440994099698,-0.03417934125036868,"tensor(1403.9791, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.23701995359634345,-0.027769200678734555,-0.21699585784161324,-0.06488318082268005,-0.02132885532163475,-0.03986343179734798,"tensor(100.8706, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.2146863662945282,-0.12180374644599314,-1.172871448674723,-0.03484814876758349,-3.095244249395983e-05,-0.028450645232518827,"tensor(25.4550, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.5862230933964283,-1.114618405339222,-2.846579737577392,-0.36126451386254727,-0.02826211103824252,-0.030730848519768157,"tensor(293.2695, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.9300409682481673,-0.004311661477312247,-0.8519759924294386,-0.0019934334113199106,-1.1488189162288368e-05,-0.05919386887891181,"tensor(-22.3574, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.47759809748347537,-1.0901245919586342,-2.5743087560868694,-0.03385007244494993,-0.00017364216560389152,-0.04912283592890735,"tensor(-62.4297, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.02747059963304255,-0.1132932494704168,-0.6103900787102011,-0.005794190899004006,-1.757390172039945e-05,-0.0645217967989981,"tensor(-5.3014, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.3580233673713663,-0.012548773568489824,-2.044143134363908,-0.041590991000346,-0.007612302923583864,-0.08280492517243025,"tensor(25.4490, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.3320003318225551,-0.2243738945602787,-2.685247693071659,-0.0036431043439101975,-0.0001283060318946925,-0.011905571570512993,"tensor(-17.3963, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01193262966708186,-0.37629870109571834,-0.10165099335876608,-0.924522416072745,-0.0017457488469542512,-0.018333075195241515,"tensor(1552.2848, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.010751209872532837,-0.39005987782357776,-0.10353117144321636,-0.9246476413099627,-0.0020177880022529716,-0.0177345165734754,"tensor(1575.7109, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05030449753496305,-0.6128741637809679,-0.11533521446312603,-0.9788746748251731,-0.0017212842709189782,-0.015292023121343777,"tensor(1805.4497, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.051174578884068865,-1.9852991029464586,-0.23202483824316328,-0.16124111694020352,-0.004406158833784628,-0.01624965816291041,"tensor(-158.6357, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05245494504008664,-0.5819846410340684,-0.20045865269968846,-0.1281561043095448,-0.0003769485827806081,-0.010061648277940958,"tensor(147.1908, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.07480740080491922,-0.04340669507534264,-0.34091522777978545,-0.012298708318552546,-0.004323368274263617,-0.02088389562403082,"tensor(2.7575, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.023444582347012792,-0.4838061114011783,-0.15501914275032466,-0.3562651382516135,-0.0006893494817677238,-0.02250771957485297,"tensor(467.0889, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.010084858662642157,-0.09234668328143948,-0.3607956582248045,-0.15440952790513846,-0.0022028948467373633,-0.014103310038001358,"tensor(21.2095, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.13122593157621146,-1.8395601845087903,-0.14554126654660254,-0.012451371598703307,-7.407047566956771e-05,-0.014235227751707047,"tensor(-112.1200, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03981981407930622,-0.018884289809311568,-0.35064742974890056,-0.9712388660804908,-0.011829010876963229,-0.0225017089343075,"tensor(1664.3842, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10874556851501181,-0.014106738913835933,-0.37578449583310813,-0.4611201327495632,-0.011895896555107298,-0.024821987106936862,"tensor(742.9753, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.038404931512905464,-0.009435815546740766,-0.1436335010280437,-0.8514225463633764,-0.05867053383886997,-0.01756750652926579,"tensor(1539.0966, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.019303880556451082,-0.048589912419916545,-0.27033044039482396,-0.552641046646081,-0.0031023470521666175,-0.014032465047585065,"tensor(333.7985, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03316500890246122,-0.026845404539442844,-0.13188745972790855,-0.25895692379933666,-0.00059343418343698,-0.021168679958537794,"tensor(446.7827, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.08384486025269593,-0.00522679041006169,-0.4514890863040096,-0.08570815691467279,-0.009372777240983463,-0.025481624774010482,"tensor(112.5249, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05525134626904902,-0.25279218790297486,-0.17389674429893595,-0.2314950508939814,-0.0012691373677840333,-0.011320510229134976,"tensor(293.3964, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.0151834826946123,-0.0010154125609516099,-1.1429448251286134,-0.9490001460477502,-0.0003228212291865293,-0.03784063281491295,"tensor(1659.7126, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01659089589969636,-0.0010729525963349537,-1.2594869171837242,-0.5290866054132142,-0.0002817864514214355,-0.040098785450978086,"tensor(898.5883, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.024587165683060942,-0.005168113820647382,-3.3621130467327167,-0.0036308910910413084,-0.05114971984802504,-0.07209275260135432,"tensor(-55.8704, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.5244298704326703,-0.06071777723432114,-0.253712124984662,-0.006139190555024608,-3.958354666068486e-05,-0.022116424345982454,"tensor(-23.6069, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.012933862346681651,-0.03679038825379399,-0.7816266262828019,-0.6185363967324039,-0.0005547924558128867,-0.04319294154291015,"tensor(805.6770, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.9409510820168795,-1.1751683422112569,-0.9966285440929462,-0.1429734674849726,-4.236645215788266e-05,-0.03089032026258666,"tensor(-91.5107, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.012202147097596481,-1.856365110471496,-0.8276976306991978,-0.001968040628354058,-0.0003401053131375401,-0.029943590558211445,"tensor(-192.7052, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.193024863678562,-0.02285846459922035,-0.4748426018785788,-0.012158169673482322,-1.5084823831498776e-05,-0.0639905720112445,"tensor(-41.4776, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.21795806987930685,-0.042439813014514376,-2.8213057092734415,-0.003471508494092047,-0.0893681608618476,-0.02892105109579183,"tensor(-42.6613, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.10186251842051397,-1.9861061512731535,-0.2898040811015971,-0.07449056482725547,-0.0006574915951009028,-0.08430138066212248,"tensor(-233.2709, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8205252374860615,-0.0018479635569752769,-1.77532109954876,-0.006598586735753855,-1.1735630873140922e-05,-0.06129291872950288,"tensor(-51.0056, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.32610540316632636,-1.201912027212719,-0.1665381199081122,-0.0013070084281809598,-3.5153083665929396e-05,-0.023664617881735895,"tensor(-116.9916, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01454159612090251,-0.08691788375218991,-0.4841193699960166,-0.2524140140632662,-0.018163605225848013,-0.012273930440085592,"tensor(312.3924, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.09586602266419449,-0.22261198237345367,-0.7967525492471125,-0.5023088938049529,-0.0030015014758985894,-0.01680249275093628,"tensor(622.6912, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05602231692071281,-0.0017891567787586414,-0.12529562649660722,-0.06006122301515313,-0.00021228580127300085,-0.011773312269262972,"tensor(72.8848, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.7984716726978394,-0.001006783690176415,-0.22541643815588167,-0.8120206937110986,-6.0903770033021284e-05,-0.03244106661795765,"tensor(1110.0260, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01143349182618565,-0.0546589312417871,-0.13238372065394893,-0.07065515706689025,-0.0009028078241818729,-0.01373834481251558,"tensor(72.8082, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.08556434721102871,-0.07911899605480807,-0.29091456862328446,-0.0017591939107457508,-2.246928076677854e-05,-0.014340703910208695,"tensor(-5.2808, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1527747374836109,-0.001966958698559335,-0.11801586317058377,-0.013419266177204662,-0.0014555210716014973,-0.03564684417354231,"tensor(12.5357, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.8777578982247682,-0.15480860710403874,-0.12698041397287377,-0.001299506655008899,-0.0012925447805521547,-0.07472795250820191,"tensor(-27.2067, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.804826450638675,-0.3871722654345286,-2.604841975981538,-0.07345279307080609,-0.00015504815659317018,-0.060496798948436216,"tensor(80.3983, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.030119221661237323,-0.12321647126228673,-0.12870091778210865,-0.4404230620087465,-0.043027941923016684,-0.029905087008193384,"tensor(745.5431, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-1.4283503245646065,-0.20350109957323595,-0.3075795237802445,-0.007885093094573553,-0.0682259469998723,-0.03597187502832834,"tensor(-22.1182, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.1967706087706411,-0.3353136322843063,-0.7788712287850761,-0.57253339340603,-0.00645610349111321,-0.0826318363708579,"tensor(-103.1445, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.8824690289491863,-0.0013395538813545944,-1.2757033400856024,-0.044003156570180425,-0.00010007365575218705,-0.02438049009420461,"tensor(24.9195, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.07600282757389186,-0.00797799505189793,-1.901432461940306,-0.0056358546366899265,-1.9637909392394947e-05,-0.013932026173386576,"tensor(-4.7346, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.0606192157290833,-0.05526570710723305,-0.5600405590581252,-0.0034301730120205524,-0.00015669304487927248,-0.014678044849456572,"tensor(-3.2156, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.011102997093981461,-1.2019113635015624,-0.21135505656806625,-0.8444426812191264,-0.09789629215574015,-0.023558968368620956,"tensor(1278.1208, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.012512526718270764,-1.489569473541223,-0.22102113665340178,-0.8788953932326028,-0.09132282200120262,-0.023996566428617257,"tensor(1317.5792, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01342781239398486,-1.8190897717022827,-0.27561084898775745,-0.17376786689766166,-0.012030629792015876,-0.0209531002778614,"tensor(-36.6306, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.010705045025826325,-1.2781954704305485,-0.21739161584692168,-0.7080737089455885,-0.017521318793371803,-0.010218324287634953,"tensor(1108.3451, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.0259780827876109,-0.7649788255478047,-0.4783142646651137,-0.17956787919419015,-0.07930475567754729,-0.04897377618551947,"tensor(84.8718, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.021792903818030274,-0.017753268033877306,-0.20293163633283412,-0.2574625760714238,-0.004071683140225807,-0.020890793012561405,"tensor(439.7923, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.04506433836481731,-0.6659553287525143,-0.4923541645110763,-0.9814485420078268,-0.02873158923696177,-0.044870996638974876,"tensor(1557.3988, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.28976465333907003,-0.5089660672182951,-0.9186882378825281,-0.11474614469225984,-0.01781066808821685,-0.051190010597379494,"tensor(-22.1283, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.053057999800661414,-0.01566765601223174,-0.42159738536036573,-0.027692011247356058,-0.003363369363107498,-0.04075327588817074,"tensor(36.7577, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.03418036781922208,-0.7763200745524523,-1.1969999144060228,-0.30232864341009735,-0.029145477376387133,-0.027743138541775625,"tensor(490.0640, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.017107698902036332,-0.029971940715556398,-0.40057497634321454,-0.9047500618411282,-0.007455736111700557,-0.0959549393211107,"tensor(1549.7409, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01848429433991039,-0.028741146415055024,-0.3921985334074533,-0.9937483906663286,-0.010226254276370405,-0.07026759464936816,"tensor(1787.6735, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.01896871354358617,-0.025403786834514188,-0.4127978016262518,-0.38332804584732144,-0.008615154758083865,-0.08747773404217916,"tensor(668.2977, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.05117960583772727,-0.006823164116717896,-0.7185709995080927,-0.9416852275885206,-0.00042905211504144807,-0.09896279387585744,"tensor(1910.7857, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.043681304804287384,-0.00495366803230356,-0.7067348763393834,-0.47132620256306357,-0.00024798587227358186,-0.06556810897475474,"tensor(802.3119, device='cuda:0', dtype=torch.float64)"
+gaitPeriodRewardScale,basePosition,baseOrientation,JointAnglesRewardScale,torqueRewardScale,actionRateRewardScale,reward
+-0.04205492010942238,-0.006766595190571582,-1.024793936505829,-0.09684738827942964,-0.0006121120502498467,-0.06951688855886602,"tensor(154.2995, device='cuda:0', dtype=torch.float64)"

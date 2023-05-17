@@ -78,16 +78,13 @@ env:
 #    file: "urdf/A1/urdf/a1_unitree.urdf"
     #file: "urdf/go1/urdf/go1.urdf"
     footName: foot # SHANK if collapsing fixed joint, FOOT otherwise
-    kneeName: thigh
+    kneeName: calf
     collapseFixedJoints: false
     fixBaseLink: false
     defaultDofDriveMode: 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
 
   learn:
     rew_buf: None
-
-    allowKneeContacts: false
-    allowHipContacts: false
 
     actionFilter: false
     # rewards
@@ -103,15 +100,18 @@ env:
     kneeCollisionRewardScale: -0.25
     actionRateRewardScale: -0.01
     footcontactRewardScale: -0.05
-    hipRewardScale: -0.25
-    gaitRewardScale: -0.0001
-    gaitPeriodRewardScale: -0.0001 #-0.0005
-    footstepReward: -0.01
-    JointAnglesRewardScale: -0.1
+    hipRewardScale: -0.05
 
-    gaitTrajectoryHipRewardScale: -0.00005
-    gaitTrajectoryKneeRewardScale: -0.00005
-    gaitTrajectoryFootRewardScale: -0.00005
+    gaitRewardScale: -0.0001
+    gaitPeriodRewardScale: -4. #-0.0005
+    footstepReward: -0.01
+    JointAnglesRewardScale: -0.05
+    basePosition: -0.1
+    baseOrientation: -5.
+
+    gaitTrajectoryHipRewardScale: -0.025
+    gaitTrajectoryKneeRewardScale: -0.025
+    gaitTrajectoryFootRewardScale: -0.025
 
 
     pushRobot: false
@@ -142,11 +142,16 @@ env:
     # episode length in seconds
     episodeLength_s: 20
 
+    # termination criteria
+
+    allowKneeContacts: true
+    allowHipContacts: false
+
     terminatedBasedHeight: false
     terminalHeight: 0.1
 
     terminatedBasedOrient: false
-    terminalOrient: 0.5
+    terminalOrient: 20.
 
   # viewer cam:
   viewer:
@@ -158,7 +163,7 @@ env:
   enableCameraSensors: False
 
   post_process:
-    save_data: false
+    save_data: true
     test_NN: false
     actionFilter: false
 

@@ -75,6 +75,8 @@ class A1(VecTask):
         self.rew_scales["gait_knee"] = self.cfg["env"]["learn"]["gaitTrajectoryKneeRewardScale"]
         self.rew_scales["gait_foot"] = self.cfg["env"]["learn"]["gaitTrajectoryFootRewardScale"]
         self.rew_scales["joint_angles"] = self.cfg["env"]["learn"]["JointAnglesRewardScale"]
+        self.rew_scales["base_position"] = self.cfg["env"]["learn"]["basePosition"]
+        self.rew_scales["base_orientation"] = self.cfg["env"]["learn"]["baseOrientation"]
 
         print('REWARD SCALES')
         print('Gait Hip Trajectory Reward Scale', self.rew_scales["gait_hip"])
@@ -211,6 +213,7 @@ class A1(VecTask):
 
 
 
+
         # Structure for reward logging
         torch_zeros = lambda : torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
         self.episode_sums = {"lin_vel_xy": torch_zeros(), "lin_vel_z": torch_zeros(), "ang_vel_z": torch_zeros(),
@@ -218,12 +221,14 @@ class A1(VecTask):
                              "base_height": torch_zeros(), "air_time": torch_zeros(), "knee_collision": torch_zeros(),
                              "action_rate": torch_zeros(), "hip": torch_zeros(), "gait": torch_zeros(), "foot_contact": torch_zeros(),
                              "gait_period": torch_zeros(),"gait_hip": torch_zeros(), "total_reward": torch_zeros(),
-                             "gait_knee": torch_zeros(), "gait_foot": torch_zeros(), "joint_angles": torch_zeros()}
+                             "gait_knee": torch_zeros(), "gait_foot": torch_zeros(), "joint_angles": torch_zeros(),
+                             'base_position': torch_zeros(),'base_orientation': torch_zeros()}
 
         #iteration counter
         self.iteration_index = torch.zeros(self.num_envs, device=self.device)
+        self.gait_index = torch.zeros(self.num_envs, device=self.device)
 
-        #push robot 
+        #push robot
         #M: Push Robot
         self.common_step_counter = 0
 
@@ -254,69 +259,23 @@ class A1(VecTask):
         self.allow_hip_contacts = self.cfg["env"]["learn"]["allowHipContacts"]
 
 
-        ####### Storing MPC Values
-
-        #Period
-        self.load_periods = torch.tensor(np.array(
-            [self.period1, self.period2, self.period3, self.period4, self.period5, self.period6, self.period7,
-             self.period8, self.period9])).cuda(0)
-
-        ## Gait Contacts
-        self.load_gaits = torch.tensor(np.array(
-            [self.ct_tp_01[:, :], self.ct_tp_02[:, :], self.ct_tp_03[:, :], self.ct_tp_04[:, :], self.ct_tp_05[:, :], self.ct_tt_06[:, :], self.ct_tt_07[:, :],
-             self.ct_tt_08[:, :], self.ct_tt_09[:, :]])).cuda(0)
-
-
-        # Positions
-        self.load_calf = torch.tensor(np.array(
-            [self.calf1[:, :, :], self.calf2[:, :, :], self.calf3[:, :, :], self.calf4[:, :, :], self.calf5[:, :, :],
-             self.calf6[:, :, :], self.calf7[:, :, :], self.calf8[:, :, :], self.calf9[:, :, :]])).cuda(0)
-
-
-
-        self.load_hip = torch.tensor(np.array(
-            [self.hip1[:, :, :], self.hip2[:, :, :], self.hip3[:, :, :], self.hip4[:, :, :], self.hip5[:, :, :],
-             self.hip6[:, :, :], self.hip7[:, :, :], self.hip8[:, :, :], self.hip9[:, :, :]])).cuda(0)
-
-
-
-        self.load_foot = torch.tensor(np.array(
-            [self.f_tp_01[:, :, :], self.f_tp_02[:, :, :], self.f_tp_03[:, :, :], self.f_tp_04[:, :, :],
-             self.f_tp_05[:, :, :], self.f_tt_06[:, :, :], self.f_tt_07[:, :, :], self.f_tt_08[:, :, :],
-             self.f_tt_09[:, :, :]])).cuda(0)
-
-        ## Joint Angles
-
-        self.load_joint_angles = torch.tensor(np.array(
-            [self.ja_01[:, :, :], self.ja_02[:, :, :], self.ja_03[:, :, :], self.ja_04[:, :, :],
-             self.ja_05[:, :, :], self.ja_06[:, :, :], self.ja_07[:, :, :], self.ja_08[:, :, :],
-             self.ja_09[:, :, :]])).cuda(0)
-        #
-        # #Actions - Torques
-        # self.load_actions= torch.tensor(np.array(
-        #     [self.actions_01[:, :, :], self.actions_02[:, :, :], self.actions_03[:, :, :], self.actions_04[:, :, :],
-        #      self.actions_05[:, :, :], self.actions_06[:, :, :], self.actions_07[:, :, :], self.actions_08[:, :, :],
-        #      self.actions_09[:, :, :]])).cuda(0)
-
-
         self.velocities = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]).cuda(0)
 
-
-
-
         self.num_vel = len(self.velocities)
-        self.num_ts = len(self.ct_tp_02) + 2 #added two as had issues with dimensions not matching
+        self.num_ts = self.load_joint_angles.shape[1] + 2 #added two as had issues with dimensions not matching
         self.num_xyz = 3
 
-        ## load MPC data
+        ## ADD EXTRA 2 INDECES TO MATCH THE ISAAC AD AVOID OUT OF INDEX
         self.gaits= torch.cat((self.load_gaits, torch.ones(len(self.load_gaits),2,self.num_legs, device=self.device)), 1).to(torch.bool)
         self.calf = torch.cat((self.load_calf, torch.ones(len(self.load_calf),2,self.num_legs,self.num_xyz, device=self.device)), 1)
         self.hip = torch.cat((self.load_hip, torch.ones(len(self.load_hip), 2, self.num_legs,self.num_xyz, device=self.device)), 1)
         self.foot = torch.cat((self.load_foot, torch.ones(len(self.load_foot), 2, self.num_legs,self.num_xyz, device=self.device)), 1)
-
-        self.joint_angle_MPC = torch.cat((self.load_joint_angles, torch.ones(len(self.load_hip), 2, self.num_legs, self.num_xyz, device=self.device)), 1)
-        # self.action_MPC = torch.cat(
-        #     (self.load_actions, torch.ones(len(self.load_hip), 2, self.num_legs, self.num_xyz, device=self.device)), 1)
+        self.joint_angle_MPC = torch.cat((self.load_joint_angles, torch.ones(len(self.load_joint_angles), 2, self.num_legs*self.num_xyz, device=self.device)), 1)
+        self.action_MPC = torch.cat((self.load_actions, torch.ones(len(self.load_actions), 2, self.num_legs* self.num_xyz, device=self.device)), 1)
+        self.base_position = torch.cat((self.load_base_position,torch.ones(len(self.load_base_position), 2,  self.num_xyz, dtype=torch.float64,
+                                                device=self.device)), 1)
+        self.base_orientation= torch.cat((self.load_base_orientation,torch.ones(len(self.load_base_orientation), 2, self.load_base_orientation.shape[-1], dtype=torch.float64,
+                                                device=self.device)), 1)
 
         ## placeholders for post processing MPC data
         self.gait = torch.zeros(self.num_envs, self.num_ts, self.num_legs, dtype=torch.bool).cuda(0)
@@ -325,24 +284,35 @@ class A1(VecTask):
         self.calves = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz,dtype=torch.float64, device=self.device)
         self.feet = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz, dtype=torch.float64,device=self.device)
 
-        self.joint_angles_MPC = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz, dtype=torch.float64,
+        self.joint_angles_MPC = torch.zeros(self.num_envs, self.num_ts,  self.num_legs * self.num_xyz, dtype=torch.float64,
                                   device=self.device)
-        # self.actions_MPC = torch.zeros(self.num_envs, self.num_ts, self.num_legs, self.num_xyz, dtype=torch.float64,
-        #                         device=self.device)
+        self.actions_MPC = torch.zeros(self.num_envs, self.num_ts, self.num_legs * self.num_xyz, dtype=torch.float32,
+                                 device=self.device)
+        self.base_positions = torch.zeros(self.num_envs, self.num_ts, self.num_xyz, dtype=torch.float64, device=self.device)
+        self.base_orientations = torch.zeros(self.num_envs, self.num_ts, self.load_base_orientation.shape[-1], dtype=torch.float64,
+                                          device=self.device)
+
+
+
 
         self.enable_gait = torch.zeros(self.num_envs, self.num_legs, dtype=torch.bool, device=self.device)
         self.enable_reward = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         #self.enable_trajectory = torch.zeros(3, self.num_envs, self.num_legs,self.num_xyz,  dtype=torch.bool, device=self.device )
+        self.period_so_far =  torch.zeros(self.num_envs, self.num_legs,device=self.device)
+        self.mpc_joint_angles = torch.zeros(self.num_envs, self.num_legs * self.num_xyz, dtype=torch.float64,device=self.device)
 
         #### testing data
         if self.save_data:
-            self.save_footstep = []
-            self.save_ref_cont =[]
-            self.save_torques = []
+            self.save_ref_period = []
+            self.save_period =[]
+            self.save_ref_joint_angles =[]
+            self.save_joint_angles = []
+            self.ref_com_vel = []
             self.save_com_vel = []
-            self.save_pos = []
-            self.save_target_pos =[]
-            self.save_period = []
+            self.save_torques = []
+            self.ref_base_position = []
+            self.save_base_position = [ ]
+
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
@@ -542,6 +512,7 @@ class A1(VecTask):
         self.common_step_counter += 1
         self.randomize_buf += 1
         self.iteration_index += 1
+        self.gait_index += 1
 
 
         #Push Robot
@@ -551,8 +522,8 @@ class A1(VecTask):
 
         # prepare quantities
         self.base_quat = self.root_states[:, 3:7]
+        self.base_quat_mpc = self._get_mpc_to_sim(self.base_orientations).type(torch.float32).cuda(0)
 
-        it = self.iteration_index
 
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
@@ -581,7 +552,7 @@ class A1(VecTask):
 
         # Save Data when testing
         if self.save_data:
-            self.testing_save_data('robohike')
+            self.testing_save_data()
 
         # Reset the agents that need termination
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
@@ -666,16 +637,23 @@ class A1(VecTask):
 
 
         ### Reward: Hip
-        #rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
-        #print(rew_hip[0])
+        # rew_hip = self._get_reward_hip() * self.rew_scales["hip"]
+        # print(rew_hip[0])
 
+        ### Reward: Base Position
+
+        rew_base_position = self._get_base_position_reward() *self.rew_scales['base_position']
+
+        ### Reward: Base Orientation
+
+        rew_base_orientation = self._get_base_orientation_reward() * self.rew_scales['base_orientation']
 
         # Total reward buffer
 
-        # self.rew_buf = rew_lin_vel_xy + rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
-        #    rew_torque + rew_joint_acc + rew_action_rate
+        # self.rew_buf =rew_ang_vel_z + rew_lin_vel_z + rew_ang_vel_xy + rew_orient + rew_base_height +\
+        #    rew_torque + rew_joint_acc + rew_action_rate +rew_lin_vel_xy + rew_base_position
+        self.rew_buf = rew_action_rate  + rew_base_position  + rew_base_orientation + rew_joint_angles + rew_gait_period
 
-        self.rew_buf = rew_gait_period
 
         ## Enable reward only when there is first contact for accurate contact matching
         # self.rew_buf = torch.where(self.enable_reward, self.rew_buf, torch.zeros_like(self.rew_buf))
@@ -695,33 +673,38 @@ class A1(VecTask):
 
         #Logging gait rewards
         self.episode_sums["gait_period"] += rew_gait_period
-        self.episode_sums["gait"] += rew_gait
+        # self.episode_sums["gait"] += rew_gait
 
 
         self.episode_sums["total_reward"] += self.rew_buf
 
 
         # self.episode_sums["air_time"] += rew_foot_air_time
-        self.episode_sums["knee_collision"] += rew_knee_collision
-        self.episode_sums["foot_contact"] += rew_foot_contact
-        self.episode_sums["gait"] += rew_gait
+        # self.episode_sums["knee_collision"] += rew_knee_collision
+        # self.episode_sums["foot_contact"] += rew_foot_contact
+        # self.episode_sums["gait"] += rew_gait
         self.episode_sums["gait_hip"] += rew_gait_hip
-        self.episode_sums["gait_knee"] += rew_gait_knee
-        self.episode_sums["gait_foot"] += rew_gait_foot
+        # self.episode_sums["gait_knee"] += rew_gait_knee
+        # self.episode_sums["gait_foot"] += rew_gait_foot
         self.episode_sums["joint_angles"] += rew_joint_angles
+        self.episode_sums["base_position"] += rew_base_position
+        self.episode_sums["base_orientation"] += rew_base_orientation
 
 
         # Save data
         if self.save_data:
             vel_error = (self.base_lin_vel[:, 0] - self.commands[:, 0]) / self.commands[:, 0]
 
-            self.save_footstep.append(self.sim_contacts)
-            self.save_ref_cont.append(self.sim_contacts)
+            self.save_ref_period.append(self.mpc_period)
+            self.save_period.append(self.sim_period)
+            self.save_ref_joint_angles.append(self.mpc_joint_angles)
+            self.save_joint_angles.append(self.dof_pos)
+            self.ref_com_vel.append(self.commands)
             self.save_com_vel.append(self.base_lin_vel)
             self.save_torques.append(self.torques)
-            self.save_target_pos.append(self._get_gait_trajectory()[0])
-            self.save_pos.append(self._get_gait_trajectory()[1])
-            self.save_period.append(torch.mean(self._gait_period(),dim=-1))
+            self.ref_base_position.append(self.mpc_base_pos)
+            self.save_base_position.append(self.sim_base_pos)
+
 
         self.reward_sim = torch.sum(self.rew_buf)
         self.reward_hip= torch.sum(rew_gait_hip)
@@ -744,7 +727,7 @@ class A1(VecTask):
 
     def reset_idx(self, env_ids):
 
-
+        zeros_update = torch.zeros_like(self.period_so_far)
         # Reset agents
         self._reset_dofs(env_ids)
         self._reset_root_states(env_ids)
@@ -759,6 +742,9 @@ class A1(VecTask):
         self.last_dof_vel[env_ids] = 0.
         self.last_actions[env_ids] = 0.
         self.iteration_index[env_ids] = 0.
+        self.gait_index[env_ids] = 0.
+        self.period_so_far[env_ids,:] = zeros_update[env_ids]
+
 
         # Register individual reward data for logging
         self.extras["episode"] = {}
@@ -771,16 +757,18 @@ class A1(VecTask):
 
 
         self.reset_buf = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
-
+        #
         #if knee touches the ground
         if not self.allow_knee_contacts:
             knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
             self.reset_buf |= torch.any(knee_contact, dim=1)
 
+
         #if hip touches the ground
-        if not self.allow_hip_contacts:
-            hip_contact = torch.norm(self.contact_forces[:, self.hip_indices, :], dim=2) > 1.
-            self.reset_buf |= torch.any(hip_contact, dim=1)
+        if not self.allow_knee_contacts:
+            contact = self.contact_forces[:, self.knee_indices, :]
+            knee_contact = torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1.
+            self.reset_buf |= torch.any(knee_contact, dim=1)
 
         # if base height is less than a minimum value
         if self.cfg['env']['learn']['terminatedBasedHeight']:
@@ -791,9 +779,10 @@ class A1(VecTask):
 
         #if base has an extreme orientation
         if self.cfg['env']['learn']['terminatedBasedOrient']:
-            self.body_orient_buf = torch.mean(self.root_states[:, 6].unsqueeze(1), dim=1) \
+            self.body_orient_buf = torch.mean(self.projected_gravity[:,:2], dim=1) \
                                    < self.cfg['env']['learn']['terminalOrient']
             self.reset_buf = torch.logical_or(self.body_orient_buf, self.reset_buf)
+
 
         self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, torch.ones_like(self.reset_buf),
                                      self.reset_buf)
@@ -852,18 +841,27 @@ class A1(VecTask):
 
         ''' Difference between simulation step period and desired MPC step period'''
 
-        sim_period = self.period/self.decimation
-        mpc_period = self._gait_period()
-        rew_gait_period = torch.sqrt(torch.sum(torch.square(mpc_period - sim_period) , dim=-1))
+        # sim_period = self.period/self.decimation
+        self.mpc_period = self.period/self.decimation
+        self.sim_period = self._gait_period()
+        # rew_gait_period = torch.sqrt(torch.square(mpc_period - sim_period))
+        rew_gait_period =torch.abs(self.mpc_period - self.sim_period)/self.mpc_period
 
-        return rew_gait_period
+        # rew_gait_period = self.distance_footstep(sim_period,mpc_period)
+
+
+        sparse_reward_period = torch.sum(torch.where(self.sim_period == 0., torch.zeros_like(rew_gait_period), rew_gait_period),dim=-1)
+
+
+
+        return sparse_reward_period
     #
     def _get_gait_reward(self):
 
         ''' Difference between simulation feet contacts and desired MPC foot contacts'''
 
         # gait forces from  MPC
-        mpc_contacts = self._get_mpc_to_sim()
+        mpc_contacts = self._get_mpc_to_sim(self.gait)
 
         # forces from sim
         self.feet_contacts = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) > 1.
@@ -922,6 +920,8 @@ class A1(VecTask):
         self.dof_pos[env_ids] = self.default_dof_pos[env_ids] * positions_offset
         self.dof_vel[env_ids] = 0.
 
+        self.mpc_joint_angles[env_ids] = self.get_mpc_footstep_per_foot(self.joint_angles_MPC,torch.zeros_like(self.period_so_far))[env_ids]
+
         env_ids_int32 = env_ids.to(dtype=torch.int32)
 
         self.gym.set_dof_state_tensor_indexed(self.sim,
@@ -954,7 +954,7 @@ class A1(VecTask):
             env_ids (List[int]): Environments ids for which new commands are needed
         """
 
-        self.ind = torch.randint(0, self.num_vel, (len(env_ids),)).cuda(0)
+        self.ind = torch.randint(0, self.num_vel, (len(env_ids),)).cuda(0) * 0 + 6
         # self.ind = torch.ones((len(env_ids)), dtype=torch.int8).cuda(0) * 5
         self.commands[env_ids, 0] = torch.index_select(self.velocities, 0, self.ind)
 
@@ -981,13 +981,10 @@ class A1(VecTask):
         self.calves[env_ids] = torch.index_select(self.calf,0,self.ind).cuda(0)
         self.hips[env_ids] = torch.index_select(self.hip, 0, self.ind).cuda(0)
         self.feet[env_ids] = torch.index_select(self.foot, 0, self.ind).cuda(0)
-        #
         self.joint_angles_MPC[env_ids] = torch.index_select(self.joint_angle_MPC, 0, self.ind).cuda(0)
-        # self.actions_MPC[env_ids] = torch.index_select(self.action_MPC, 0, self.ind).cuda(0)
-        #
-        #
-        #
-        #
+        self.actions_MPC[env_ids] = torch.index_select(self.action_MPC, 0, self.ind).cuda(0)
+        self.base_positions[env_ids] = torch.index_select(self.base_position, 0, self.ind).cuda(0)
+        self.base_orientations[env_ids] = torch.index_select(self.base_orientation, 0, self.ind).cuda(0)
 
 
         # set small commands to zero
@@ -999,170 +996,68 @@ class A1(VecTask):
         # load data from MPC
         path = "/home/robohike/motion_imitation/1000/"
 
-        # load MPC gaits
-        ########### tripod
 
-        with np.load(path + "foot_contacts1.npz") as ct_tp_01:
-            self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts1.npz") as ct_tp_01:
-            self.ct_tp_01 = ct_tp_01["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts2.npz") as ct_tp_02:
-            self.ct_tp_02 = ct_tp_02["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts3.npz") as ct_tp_03:
-            self.ct_tp_03 = ct_tp_03["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts4.npz") as ct_tp_04:
-            self.ct_tp_04 = ct_tp_04["feet_contacts"]
-        with np.load(path + "foot_contacts5.npz") as ct_tp_05:
-            self.ct_tp_05 = ct_tp_05["feet_contacts"]
-        with np.load(path + "foot_contacts6.npz") as ct_tt_06:
-            self.ct_tt_06 = ct_tt_06["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts7.npz") as ct_tt_07:
-            self.ct_tt_07 = ct_tt_07["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts8.npz") as ct_tt_08:
-            self.ct_tt_08 = ct_tt_08["feet_contacts"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot_contacts9.npz") as ct_tt_09:
-            self.ct_tt_09 = ct_tt_09["feet_contacts"]
-        # with np.load(path + "foot_contacts10tt.npz") as ct_tt_10:
-        #     self.ct_tt_10 = ct_tt_10["feet_contacts"]
+        self._base_positions =[]
+        self._base_orientation = []
+        self._actions = []
+        self._joint_angles = []
+        self._gaits = []
+        self._periods = []
+        self._foot_contacts = []
+        self._foot = []
+        self._calfs = []
+        self._hips = []
 
-        # load MPC footsteps
-        ########### trotting
 
-        with np.load(path + "hip1.npz") as hip1:
-            self.hip1 = hip1["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf1.npz") as calf1:
-            self.calf1 = calf1["calf_pos"]  # [n_time_steps, feet indices, xyz]
+        for i in range(1, 9):
+            # if (i == 5): continue # No 5 for some reason
+            filepaths = [
+                f'base_position{i}.npz',
+                f'base_orientation{i}.npz',
+                f'joint_angles{i}.npz',
+                f'actions{i}.npz',
+                f'period{i}.npz',
+                f'foot{i}.npz',
+                f'calf{i}.npz',
+                f'hip{i}.npz',
+                f'foot_contacts{i}.npz'
+            ]
+            filepaths = [path + fp for fp in filepaths]
 
-        with np.load(path + "hip2.npz") as hip2:
-            self.hip2 = hip2["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf2.npz") as calf2:
-            self.calf2 = calf2["calf_pos"]  # [n_time_steps, feet indices, xyz]
+            base_position = np.load(filepaths[0])['base_position']
+            base_orientation = np.load(filepaths[1])['base_orientation']
+            joint_angles = np.load(filepaths[2])['joint_angles']
+            actions = np.load(filepaths[3])['actions']
+            periods = np.load(filepaths[4])['period']
+            foots = np.load(filepaths[5])['foot_pos']
+            calfs = np.load(filepaths[6])['calf_pos']
+            hips = np.load(filepaths[7])['hip_pos']
+            foot_contacts = np.load(filepaths[8])['feet_contacts']
 
-        with np.load(path + "hip3.npz") as hip3:
-            self.hip3 = hip3["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf3.npz") as calf3:
-            self.calf3 = calf3["calf_pos"]  # [n_time_steps, feet indices, xyz]
 
-        with np.load(path + "hip4.npz") as hip4:
-            self.hip4 = hip4["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf4.npz") as calf4:
-            self.calf4 = calf4["calf_pos"]  # [n_time_steps, feet indices, xyz]
+            self._base_positions.append(base_position)
+            self._base_orientation.append(base_orientation)
+            self._joint_angles.append(joint_angles)
+            self._actions.append(actions)
+            self._periods.append(periods)
+            self._foot_contacts.append(foot_contacts)
+            self._hips.append(hips)
+            self._calfs.append(calfs)
+            self._foot.append(foots)
+            self._gaits.append(foot_contacts)
 
-        with np.load(path + "hip5.npz") as hip5:
-            self.hip5 = hip5["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf5.npz") as calf5:
-            self.calf5 = calf5["calf_pos"]  # [n_time_steps, feet indices, xyz]
 
-        with np.load(path + "hip6.npz") as hip6:
-            self.hip6 = hip6["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf6.npz") as calf6:
-            self.calf6 = calf6["calf_pos"]  # [n_time_steps, feet indices, xyz]
+        self.load_joint_angles = torch.tensor(self._joint_angles, device=self.device)
+        self.load_hip = torch.tensor(self._hips, device=self.device)
+        self.load_calf = torch.tensor(self._calfs, device = self.device)
+        self.load_foot = torch.tensor(self._foot, device=self.device)
+        self.load_actions = torch.tensor(self._actions, device=self.device)
+        self.load_base_position = torch.tensor(self._base_positions, device=self.device)
+        self.load_base_orientation = torch.tensor(self._base_orientation, device=self.device)
+        self.load_periods = torch.tensor(np.array(self._periods), device=self.device)
+        self.load_gaits = torch.tensor(self._gaits, device=self.device)
 
-        with np.load(path + "hip7.npz") as hip7:
-            self.hip7 = hip7["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf7.npz") as calf7:
-            self.calf7 = calf7["calf_pos"]  # [n_time_steps, feet indices, xyz]
 
-        with np.load(path + "hip8.npz") as hip8:
-            self.hip8 = hip8["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf8.npz") as calf8:
-            self.calf8 = calf8["calf_pos"]  # [n_time_steps, feet indices, xyz]
-
-        with np.load(path + "hip9.npz") as hip9:
-            self.hip9 = hip9["hip_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "calf9.npz") as calf9:
-            self.calf9 = calf9["calf_pos"]  # [n_time_steps, feet indices, xyz]
-
-        ################ Period
-
-        with np.load(path + "period1.npz") as period1:
-            self.period1 = period1["period"]
-        with np.load(path + "period2.npz") as period2:
-            self.period2 = period2["period"]
-        with np.load(path + "period3.npz") as period3:
-            self.period3 = period3["period"]
-        with np.load(path + "period4.npz") as period4:
-            self.period4 = period4["period"]
-        with np.load(path + "period5.npz") as period5:
-            self.period5 = period5["period"]
-        with np.load(path + "period6.npz") as period6:
-            self.period6 = period6["period"]
-        with np.load(path + "period7.npz") as period7:
-            self.period7 = period7["period"]
-        with np.load(path + "period8.npz") as period8:
-            self.period8 = period8["period"]
-        with np.load(path + "period9.npz") as period9:
-            self.period9 = period9["period"]
-
-        # load MPC footsteps
-        # ########### trotting
-        with np.load(path + "foot1.npz") as f_tp_01:
-            self.f_tp_01 = f_tp_01["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot2.npz") as f_tp_02:
-            self.f_tp_02 = f_tp_02["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot3.npz") as f_tp_03:
-            self.f_tp_03 = f_tp_03["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot4.npz") as f_tp_04:
-            self.f_tp_04 = f_tp_04["foot_pos"]
-        with np.load(path + "foot5.npz") as f_tp_05:
-            self.f_tp_05 = f_tp_05["foot_pos"]
-
-        with np.load(path + "foot6.npz") as f_tt_06:
-            self.f_tt_06 = f_tt_06["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot7.npz") as f_tt_07:
-            self.f_tt_07 = f_tt_07["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot8.npz") as f_tt_08:
-            self.f_tt_08 = f_tt_08["foot_pos"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "foot9.npz") as f_tt_09:
-            self.f_tt_09 = f_tt_09["foot_pos"]
-        # with np.load(path + "foot10.npz") as f_tt_10:
-        #     self.f_tt_10 = f_tt_10["footsteps"]
-
-        #
-        #
-        # load MPC joint angles
-        # ########### trotting
-        with np.load(path + "joint_angles1.npz") as ja_01:
-            self.ja_01 = ja_01["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles2.npz") as ja_02:
-            self.ja_02 = ja_02["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles3.npz") as ja_03:
-            self.ja_03 = ja_03["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles4.npz") as ja_04:
-            self.ja_04 = ja_04["joint_angles"]
-        with np.load(path + "joint_angles5.npz") as ja_05:
-            self.ja_05 = ja_05["joint_angles"]
-        with np.load(path + "joint_angles6.npz") as ja_06:
-            self.ja_06 = ja_06["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles7.npz") as ja_07:
-            self.ja_07 = ja_07["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles8.npz") as ja_08:
-            self.ja_08 = ja_08["joint_angles"]  # [n_time_steps, feet indices, xyz]
-        with np.load(path + "joint_angles9.npz") as ja_09:
-            self.ja_09 = ja_09["joint_angles"]
-        # with np.load(path + "foot10.npz") as f_tt_10:
-        #     self.f_tt_10 = f_tt_10["footsteps"
-
-        # # load MPC joint angles
-        # # ########### trotting
-        # with np.load(path + "actions1.npz") as actions_01:
-        #     self.action_01 = actions_01["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions2.npz") as actions_02:
-        #     self.action_02 = actions_02["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions3.npz") as actions_03:
-        #     self.action_03 = actions_03["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions4.npz") as actions_04:
-        #     self.action_04 = actions_04["actions"]
-        # with np.load(path + "actions5.npz") as actions_05:
-        #     self.action_05 = actions_05["actions"]
-        # with np.load(path + "actions6.npz") as actions_06:
-        #     self.action_06 = actions_06["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions7.npz") as actions_07:
-        #     self.action_07 = actions_07["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions8.npz") as actions_08:
-        #     self.action_08 = actions_08["actions"]  # [n_time_steps, feet indices, xyz]
-        # with np.load(path + "actions9.npz") as actions_09:
-        #     self.action_09 = actions_09["actions"]
 
 
     def _gait_period(self):
@@ -1211,10 +1106,11 @@ class A1(VecTask):
         condition2 = end_cycle == 0
         condition = torch.logical_and(condition2, condition1)
 
-        period_so_far = self.swing_updated_counter + self.stance_updated_counter
+        self.period_so_far = self.swing_updated_counter + self.stance_updated_counter
+
 
         # self.cycle_index = torch.where(condition == 2*torch.ones(self.num_envs).cuda(0),self.swing_updated_counter,torch.zeros(self.num_envs).cuda(0)) #index cycle ends
-        self.cycle_index = torch.where(condition1, period_so_far, self.indx_update)  # index cycle ends
+        self.cycle_index = torch.where(condition1, self.period_so_far, self.indx_update)  # index cycle ends
 
         self.indx_update = self.cycle_index
 
@@ -1228,26 +1124,57 @@ class A1(VecTask):
         self.swing_updated_counter = torch.where(condition1, torch.zeros(self.num_envs, 4).cuda(0),
                                                  self.swing_updated_counter)
 
+        ts = torch.tensor([self.num_ts, self.num_ts, self.num_ts, self.num_ts], device=self.device)
+        e_ts = torch.unsqueeze(ts, 0)
+        e_ts.expand(self.num_ts, -1)
+
+        self.swing_updated_counter = torch.where(self.period_so_far < e_ts, self.swing_updated_counter,
+                                                 torch.zeros_like(self.period_so_far))
+        self.stance_updated_counter = torch.where(self.period_so_far < e_ts, self.stance_updated_counter,
+                                                 torch.zeros_like(self.period_so_far))
+
         self.reward_scaling = torch.where(condition1, torch.ones(self.num_envs, 4).cuda(0),
                                           torch.zeros(self.num_envs, 4).cuda(0))
 
-        ### index reset
 
-        # self.iteration_index = torch.where(condition1,
-        #                                    torch.zeros(self.num_envs,4).cuda(0) + self.till_contact,
-        #                                    self.iteration_index)
-        #
-        # self.footstep_update = torch.where(condition1, self.cycle_index,
-        #                                    self.footstep_update)
+        self.period_so_far = torch.where(self.period_so_far < e_ts, self.period_so_far, torch.zeros_like(self.period_so_far))
 
-        # Checking Period
+
+        rew_period = torch.where(condition1, self.cycle_index, torch.zeros_like(self.cycle_index))
+
+        self.mpc_joint_angles = self.get_mpc_footstep_per_foot(self.joint_angles_MPC,self.period_so_far)
+
+
+        # # Checking Period
         # print('contact', contact)
         # print('step', self.stance_step_counter)
         # print('cycle', self.cycle_index)
-        # print('period', period_so_far)
+        # print('period', self.period_so_far)
+        # print('reward?', rew_period)
         # print()
 
-        return self.cycle_index
+        return rew_period
+
+
+    def _get_base_position_reward(self):
+
+        self.sim_base_pos = self.root_states[:,:3]
+        self.mpc_base_pos = self._get_mpc_to_sim(self.base_positions)
+
+        # base_pos_rew = torch.sum((mpc_base_pos - sim_base_pos)/mpc_base_pos, dim = -1)
+        #
+        base_pos_rew = self.distance_footstep(self.sim_base_pos,self.mpc_base_pos)
+        return base_pos_rew
+
+    def _get_base_orientation_reward(self):
+
+        sim_base_or = self.base_quat
+        mpc_base_or = self._get_mpc_to_sim(self.base_orientations)
+
+        # base_or_rew = torch.sum((mpc_base_or - sim_base_or)/mpc_base_or, dim = -1)
+        base_or_rew = self.distance_footstep(sim_base_or,mpc_base_or)
+
+        return base_or_rew
 
 
     def enabling_rewards(self,to_enable):
@@ -1273,10 +1200,10 @@ class A1(VecTask):
 
 
 
-    def _get_mpc_to_sim(self):
+    def _get_mpc_to_sim(self,tensor):
         ''' Only take one idx of the mpc gaits at a time for ech environemnt, corresponding to the simulation index'''
         
-        test = self.iteration_index.expand(4, -1)
+        test = self.iteration_index.expand(tensor.shape[-1], -1)
         test = test.t()
         test = test.to(torch.int64)
         ttest1 = torch.unsqueeze(test, 1)
@@ -1287,11 +1214,34 @@ class A1(VecTask):
         #                                                               len(self.feet_indices))
         # self.gait_downsampled[:, self.till_contact:, :] = self.gait[:, self.till_contact:, :]
 
-        desired_mpc = torch.gather(self.gait, 1, ttest1.to(torch.int64))
-        #desired_mpc = torch.gather(self.gait, 1, ttest1.to(torch.int64))
+        desired_mpc = torch.gather(tensor, 1, ttest1.to(torch.int64))
         desired_mpc = torch.squeeze(desired_mpc, 1)
         self.sim_contacts = desired_mpc
         return desired_mpc
+    #
+    def get_mpc_footstep_per_foot(self,tensor,index):
+
+        # get footstep for each env and account for time index
+
+        dof_sample = tensor
+        index = index
+
+        test1 = torch.unsqueeze(index,-1)
+        test1 = test1.expand(-1,-1,3)
+        test1 = test1.flatten(-2,-1)
+        # test1 = test1.t()
+        test1 = test1.to(torch.int64)
+        ttest2 = torch.unsqueeze(test1, 1)
+
+
+        desired_footstep = torch.gather(dof_sample, 1, ttest2.to(torch.int64))
+        desired_footstep = torch.squeeze(desired_footstep, 1)
+
+        # desired_footstep = desired_footstep.reshape(self.num_envs,4,3)
+        return desired_footstep
+
+
+
 
     def get_mpc_footstep(self,tensor):
 
@@ -1345,36 +1295,35 @@ class A1(VecTask):
 
     def get_joint_angles_reward(self):
 
-        joint_ang_MPC = self.get_mpc_footstep(self.joint_angles_MPC)  # jot angles mpc
+        joint_ang_MPC = self.mpc_joint_angles
         joint_ang_sim = self.dof_pos
-
-        sqr_diff = torch.square(
-            joint_ang_MPC - joint_ang_sim)  # squered diff between desired and simulated trajectories
-        rew_joint_angles = torch.sum(sqr_diff, dim=-1)
+        rew_joint_angles = torch.sum(torch.abs(joint_ang_MPC - joint_ang_sim) / joint_ang_MPC , dim=-1) #TODO add abs
+        #
+        # rew_joint_angles = self.distance_footstep(joint_ang_MPC,joint_ang_sim)
 
         return rew_joint_angles
-
-
-
 
 
     def distance_footstep(self, sim, target):
         diff = sim - target
         sqr = torch.square(diff)
-        error = torch.sum(torch.sum(sqr, dim=1))
+        error = torch.sum(sqr, dim=-1)
         return error
 
     ######################### Testing Functions
 
-    def testing_save_data(self,pc):
-        save_vel = 'p09'
-        torch.save(self.save_footstep, '/home/'+pc+'/test_data/fc'+save_vel+'.pt')
-        torch.save(self.save_com_vel, '/home/'+pc+'/test_data/vel'+save_vel+'.pt')
-        torch.save(self.save_torques, '/home/'+pc+'/test_data/trq'+save_vel+'.pt')
-        torch.save(self.save_ref_cont, '/home/'+pc+'/test_data/ref'+save_vel+'.pt')
-        torch.save(self.save_pos, '/home/'+pc+'/test_data/pos'+save_vel+'.pt')
-        torch.save(self.save_target_pos, '/home/' + pc + '/test_data/target_pos' + save_vel + '.pt')
-        torch.save(self.save_period, '/home/'+pc+'/test_data/period'+save_vel+'.pt')
+    def testing_save_data(self):
+        save_vel = int(10 *self.commands[:,0].detach().cpu().numpy())
+        directory = os.path.join(f'data_processing/save_data/')
+        torch.save(self.save_ref_period, os.path.join(directory,f'ref_period_{save_vel}.pt'))
+        torch.save(self.save_period,  os.path.join(directory,f'period_{save_vel}.pt'))
+        torch.save(self.save_ref_joint_angles,  os.path.join(directory,f'ref_joint_angles_{save_vel}.pt'))
+        torch.save(self.save_joint_angles,  os.path.join(directory,f'joint_angles_{save_vel}.pt'))
+        torch.save(self.ref_com_vel,  os.path.join(directory,f'ref_com_vel_{save_vel}.pt'))
+        torch.save(self.save_com_vel,  os.path.join(directory,f'com_vel_{save_vel}.pt'))
+        torch.save(self.save_torques,  os.path.join(directory,f'torques_{save_vel}.pt'))
+        torch.save(self.ref_base_position, os.path.join(directory, f'ref_base_position_{save_vel}.pt'))
+        torch.save(self.save_base_position, os.path.join(directory, f'base_position_{save_vel}.pt'))
 
     def test_extracted_NN(self, name_of_file):
         # take to ocnstructor
